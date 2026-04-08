@@ -122,6 +122,17 @@
         }
 
         function processRecord(type, btnElement, requireGeofence) {
+            // --- 🛑 เพิ่มระบบป้องกันการกดซ้ำ ---
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const actionKey = `log_${currentUser}_${todayStr}_${type}`;
+            
+            // เช็คว่ามือถือเครื่องนี้ วันนี้ พนักงานคนนี้ เคยกดปุ่มนี้ไปหรือยัง
+            if(localStorage.getItem(actionKey)) {
+                alert(`คุณได้กด "${type}" ของวันนี้ไปแล้วครับ ไม่สามารถกดซ้ำได้`);
+                return; // หยุดการทำงานทันที
+            }
+            // ------------------------------------
+
             let remark = "";
             if(type === 'ลางาน') {
                 remark = prompt("ระบุเหตุผลการลางาน (เช่น ป่วย, ลากิจ):");
@@ -149,7 +160,7 @@
                         }
 
                         const locText = `${userLat.toFixed(5)}, ${userLon.toFixed(5)}`;
-                        saveData(type, locText, remark, btnElement, originalText);
+                        saveData(type, locText, remark, btnElement, originalText, actionKey); // ส่ง actionKey ไปด้วย
                     },
                     (error) => {
                         alert("โปรดอนุญาตการเข้าถึงตำแหน่ง (GPS) ในการตั้งค่าเบราว์เซอร์");
@@ -165,7 +176,7 @@
             }
         }
 
-        function saveData(type, location, remark, btnElement, originalText) {
+        function saveData(type, location, remark, btnElement, originalText, actionKey) {
             btnElement.innerText = "กำลังบันทึก...";
             const now = new Date();
             const payload = { 
@@ -179,9 +190,13 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             }).then(() => {
+                // --- 🛑 บันทึกความจำลงมือถือว่าทำรายการนี้เสร็จแล้ว ---
+                localStorage.setItem(actionKey, 'done');
+                
                 alert(`บันทึก [${type}] เรียบร้อยแล้ว`);
                 btnElement.innerText = originalText;
                 btnElement.disabled = false;
+                logout(); // บันทึกเสร็จแล้วออกจากระบบทันที
             }).catch(() => {
                 alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
                 btnElement.innerText = originalText;
@@ -209,7 +224,6 @@
                     return;
                 }
 
-                // นับจำนวนคนเข้างานและลางาน
                 let countIn = data.filter(d => d.type === 'เข้างาน').length;
                 let countLeave = data.filter(d => d.type === 'ลางาน').length;
 
@@ -220,7 +234,6 @@
                     </div>
                 `;
 
-                // สร้างรายการแต่ละคน (ย้อนกลับให้คนล่าสุดอยู่บนสุด)
                 data.reverse().forEach(item => {
                     let color = '#555';
                     if(item.type === 'เข้างาน') color = '#10b981';
