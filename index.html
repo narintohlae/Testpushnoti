@@ -18,15 +18,15 @@
         .clock { font-size: 3em; font-weight: bold; color: #222; margin: 15px 0; }
         
         .btn-group { display: flex; gap: 15px; margin-bottom: 15px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 12px; font-size: 1em; font-family: 'Sarabun', sans-serif; font-weight: bold; color: white; cursor: pointer; transition: transform 0.1s; }
+        button { padding: 15px; border: none; border-radius: 12px; font-size: 1em; font-family: 'Sarabun', sans-serif; font-weight: bold; color: white; cursor: pointer; transition: transform 0.1s; }
         button:active { transform: scale(0.95); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-in { background-color: #10b981; } 
-        .btn-out { background-color: #ef4444; } 
+        .btn-in { flex: 1; background-color: #10b981; } 
+        .btn-out { flex: 1; background-color: #ef4444; } 
         
-        .btn-group-sub { display: flex; gap: 15px; margin-bottom: 20px; }
-        .btn-ot { background-color: #f59e0b; padding: 10px; font-size: 0.9em; }
-        .btn-leave { background-color: #8b5cf6; padding: 10px; font-size: 0.9em; }
+        /* ปรับปุ่มลางานให้เต็มหน้ากว้าง */
+        .btn-group-sub { margin-bottom: 20px; }
+        .btn-leave { width: 100%; background-color: #8b5cf6; padding: 12px; font-size: 0.9em; }
         
         .btn-action { background-color: #f3f4f6; color: #374151; padding: 10px; border-radius: 8px; font-size: 0.9em; margin-top: 10px; width: 100%; border: 1px solid #d1d5db; }
         .btn-logout { background-color: #fee2e2; color: #ef4444; padding: 10px; border-radius: 8px; font-size: 0.9em; margin-top: 10px; width: 100%; }
@@ -58,8 +58,7 @@
         </div>
         
         <div class="btn-group-sub">
-            <button class="btn-ot" onclick="processRecord('โอที', this, true)">เริ่มโอที</button>
-            <button class="btn-leave" onclick="processRecord('ลางาน', this, false)">แจ้งลางาน</button>
+            <button class="btn-leave" onclick="processRecord('ลางาน', this, false)">📝 แจ้งลางาน</button>
         </div>
 
         <button class="btn-action" onclick="openDashboard()">📊 ดูสรุปข้อมูลวันนี้</button>
@@ -75,6 +74,7 @@
     </div>
 
     <script>
+        // ใช้ URL และพิกัดเดิมของคุณ
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXuioI9v6FsX3lXZXej1_NXb-Mi8JYC_8JKSQH_8laQSud39ThLGm6X_1j38MiMNPv/exec';
         
         const OFFICE_LAT = 8.597226393849; 
@@ -84,7 +84,6 @@
         let currentUser = "";
         let currentPin = "";
 
-        // ฟังก์ชันสร้างวันที่มาตรฐาน (ป้องกันปัญหามือถือแต่ละเครื่องส่งรูปแบบวันที่ไม่เหมือนกัน)
         function getStandardDate() {
             const d = new Date();
             const day = String(d.getDate()).padStart(2, '0');
@@ -181,7 +180,7 @@
             btnElement.innerText = "กำลังบันทึก...";
             const now = new Date();
             const payload = { 
-                date: getStandardDate(), // ใช้วันที่แบบมาตรฐาน
+                date: getStandardDate(),
                 time: now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }), 
                 type: type, location: location, empId: currentUser, pin: currentPin, remark: remark 
             };
@@ -219,7 +218,6 @@
                     return;
                 }
 
-                // กรองเฉพาะข้อมูลของวันนี้ (เปรียบเทียบด้วย String รูปแบบเดียวกัน)
                 let todayData = data.filter(d => d.date === todayStr);
 
                 if(todayData.length === 0) {
@@ -242,7 +240,6 @@
                     if(item.type === 'เข้างาน') color = '#10b981';
                     if(item.type === 'ออกงาน') color = '#ef4444';
                     if(item.type === 'ลางาน') color = '#8b5cf6';
-                    if(item.type === 'โอที') color = '#f59e0b';
 
                     html += `
                         <div class="dash-item">
