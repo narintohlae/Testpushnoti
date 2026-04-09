@@ -124,23 +124,67 @@
         }
 
         // --- Core App ---
-        function login() {
+function login() {
             const id = document.getElementById('inputId').value.trim();
             const pin = document.getElementById('inputPin').value.trim();
-            if(id === "" || pin === "") return alert("กรุณากรอกข้อมูลให้ครบ"); 
+            
+            if(id === "" || pin === "") { 
+                alert("กรุณากรอกข้อมูลให้ครบถ้วน"); 
+                return; 
+            }
 
+            // 1. ตรวจสอบสิทธิ์ Admin ก่อน (เพราะแอดมินไม่ต้องเช็คใน Google Sheets)
             if(id.toLowerCase() === ADMIN_USER && pin === ADMIN_PIN) {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('adminScreen').style.display = 'block';
-                document.getElementById('adminSearchDate').valueAsDate = new Date(); // ใส่วันที่วันนี้ให้ช่องค้นหา
+                document.getElementById('adminSearchDate').valueAsDate = new Date(); 
                 fetchAdminLogs();
                 return;
             }
 
-            currentUser = id; currentPin = pin;
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainScreen').style.display = 'block';
-            document.getElementById('displayId').innerText = currentUser;
+            // 2. ตรวจสอบสิทธิ์พนักงานทั่วไป โดยดึงข้อมูลจาก Google Sheets
+            const loginBtn = document.querySelector('.btn-primary');
+            const origText = loginBtn.innerText;
+            loginBtn.innerText = "กำลังตรวจสอบข้อมูล...";
+            loginBtn.disabled = true;
+
+            // วิ่งไปดึงข้อมูลจากแผ่นงาน Users
+            fetch(SCRIPT_URL + "?action=getUsers")
+            .then(res => res.json())
+            .then(data => {
+                loginBtn.innerText = origText;
+                loginBtn.disabled = false;
+
+                // ค้นหาพนักงานจากรหัสที่พิมพ์เข้ามา
+                const user = data.find(u => u.empId === id);
+
+                // ถ้าหารหัสไม่เจอ
+                if (!user) {
+                    alert("❌ ไม่พบรหัสพนักงานนี้ในระบบ");
+                    return;
+                }
+
+                // ถ้ารหัสเจอ แต่ PIN ไม่ตรง
+                if (user.pin !== pin) {
+                    alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง");
+                    return;
+                }
+
+                // ถ้ารหัสและ PIN ถูกต้อง ให้เข้าระบบได้!
+                currentUser = id; 
+                currentPin = pin;
+                
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('mainScreen').style.display = 'block';
+                
+                // โชว์ชื่อพนักงานพ่วงไปด้วยเลย
+                document.getElementById('displayId').innerText = user.name + " (" + currentUser + ")";
+            })
+            .catch(err => {
+                loginBtn.innerText = origText;
+                loginBtn.disabled = false;
+                alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล กรุณาลองใหม่");
+            });
         }
 
         function logout() {
