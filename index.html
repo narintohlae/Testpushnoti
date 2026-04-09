@@ -124,8 +124,7 @@
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
 
-        // --- Core App ---
-        function login() {
+function login() {
             const id = document.getElementById('inputId').value.trim();
             const pin = document.getElementById('inputPin').value.trim();
             
@@ -161,16 +160,18 @@
                 loginBtn.innerText = origText;
                 loginBtn.disabled = false;
 
-                // ค้นหาพนักงานจากรหัส
-                const user = users.find(u => u.empId.toLowerCase() === id.toLowerCase());
+                // 🛠️ แก้ไข: บังคับแปลงค่าให้เป็น String ก่อนเทียบกันเสมอ ป้องกันบั๊ก Google Sheets
+                const user = users.find(u => String(u.empId).toLowerCase() === String(id).toLowerCase());
+                
                 if (!user) return alert("❌ ไม่พบรหัสพนักงานนี้ในระบบ");
-                if (user.pin !== pin) return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง");
+                if (String(user.pin) !== String(pin)) return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง");
 
                 currentUser = user.empId; 
                 currentPin = pin;
 
-                // เช็คว่าวันนี้พนักงานคนนี้เคยกดอะไรไปแล้วบ้าง
-                const myLogsToday = logs.filter(l => l.empId.toLowerCase() === currentUser.toLowerCase());
+                // 🛠️ แก้ไข: บังคับแปลงค่าให้เป็น String ก่อนค้นหาประวัติ
+                const myLogsToday = logs.filter(l => String(l.empId).toLowerCase() === String(currentUser).toLowerCase());
+                
                 const hasClockedIn = myLogsToday.some(l => l.type === 'เข้างาน');
                 const hasClockedOut = myLogsToday.some(l => l.type === 'ออกงาน');
                 const hasLeave = myLogsToday.some(l => l.type === 'ลางาน');
@@ -191,7 +192,7 @@
                 
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainScreen').style.display = 'block';
-                document.getElementById('displayId').innerText = user.name + " (" + currentUser + ")";
+                document.getElementById('displayId').innerText = "👤 " + user.name + " (" + currentUser + ")";
             })
             .catch(err => {
                 loginBtn.innerText = origText;
