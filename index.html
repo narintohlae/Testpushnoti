@@ -13,6 +13,7 @@
         .login-box { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
         input { width: 90%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 1em; font-family: 'Sarabun'; text-align: center; margin: 0 auto; box-sizing: border-box; }
         .btn-primary { background-color: #2563eb; color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 1em; font-weight: bold; font-family: 'Sarabun'; width: 100%; transition: background 0.2s; }
+        .btn-primary:disabled { background-color: #9ca3af; cursor: not-allowed; }
         
         #userGreeting { color: #2563eb; font-weight: bold; margin-bottom: 5px; }
         .clock { font-size: 3em; font-weight: bold; color: #222; margin: 15px 0; }
@@ -59,10 +60,10 @@
         <div id="userGreeting">รหัสพนักงาน: <span id="displayId"></span></div>
         <div class="clock" id="clockDisplay">00:00</div>
         <div class="btn-group">
-            <button class="btn-in" onclick="processRecord('เข้างาน', this, true)">เข้างาน</button>
-            <button class="btn-out" onclick="processRecord('ออกงาน', this, true)">ออกงาน</button>
+            <button class="btn-in" id="btnIn" onclick="processRecord('เข้างาน', this, true)">เข้างาน</button>
+            <button class="btn-out" id="btnOut" onclick="processRecord('ออกงาน', this, true)">ออกงาน</button>
         </div>
-        <button class="btn-leave" onclick="processRecord('ลางาน', this, false)">📝 แจ้งลางาน</button>
+        <button class="btn-leave" id="btnLeave" onclick="processRecord('ลางาน', this, false)">📝 แจ้งลางาน</button>
         <button class="btn-action" onclick="openDashboard()">📊 ดูสรุปข้อมูลวันนี้</button>
         <button class="btn-logout" onclick="logout()">🚪 ออกจากระบบ</button>
     </div>
@@ -103,7 +104,7 @@
     </div>
 
     <script>
-        // 🔴 ใส่ URL ใหม่ตรงนี้
+        // 🔴 SCRIPT URL และตั้งค่าของคุณ
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyXuioI9v6FsX3lXZXej1_NXb-Mi8JYC_8JKSQH_8laQSud39ThLGm6X_1j38MiMNPv/exec';
         const OFFICE_LAT = 8.597226393849; 
         const OFFICE_LON = 99.92618619071712; 
@@ -124,7 +125,7 @@
         }
 
         // --- Core App ---
-function login() {
+        function login() {
             const id = document.getElementById('inputId').value.trim();
             const pin = document.getElementById('inputPin').value.trim();
             
@@ -133,7 +134,7 @@ function login() {
                 return; 
             }
 
-            // 1. ตรวจสอบสิทธิ์ Admin ก่อน (เพราะแอดมินไม่ต้องเช็คใน Google Sheets)
+            // 1. ตรวจสอบสิทธิ์ Admin ก่อน
             if(id.toLowerCase() === ADMIN_USER && pin === ADMIN_PIN) {
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('adminScreen').style.display = 'block';
@@ -142,42 +143,54 @@ function login() {
                 return;
             }
 
-            // 2. ตรวจสอบสิทธิ์พนักงานทั่วไป โดยดึงข้อมูลจาก Google Sheets
+            // 2. ตรวจสอบสิทธิ์พนักงาน พร้อมเช็คประวัติวันนี้
             const loginBtn = document.querySelector('.btn-primary');
             const origText = loginBtn.innerText;
             loginBtn.innerText = "กำลังตรวจสอบข้อมูล...";
             loginBtn.disabled = true;
 
-            // วิ่งไปดึงข้อมูลจากแผ่นงาน Users
-            fetch(SCRIPT_URL + "?action=getUsers")
-            .then(res => res.json())
-            .then(data => {
+            const todayStr = getStandardDate();
+            const timestamp = new Date().getTime(); // ป้องกันแคชจำค่าเก่า
+
+            // วิ่งไปดึงข้อมูล 2 อย่างพร้อมกัน: 1.รายชื่อผู้ใช้ 2.ประวัติวันนี้
+            Promise.all([
+                fetch(SCRIPT_URL + "?action=getUsers&t=" + timestamp).then(res => res.json()),
+                fetch(SCRIPT_URL + "?action=getLogs&date=" + todayStr + "&t=" + timestamp).then(res => res.json())
+            ])
+            .then(([users, logs]) => {
                 loginBtn.innerText = origText;
                 loginBtn.disabled = false;
 
-                // ค้นหาพนักงานจากรหัสที่พิมพ์เข้ามา
-                const user = data.find(u => u.empId === id);
+                // ค้นหาพนักงานจากรหัส
+                const user = users.find(u => u.empId.toLowerCase() === id.toLowerCase());
+                if (!user) return alert("❌ ไม่พบรหัสพนักงานนี้ในระบบ");
+                if (user.pin !== pin) return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง");
 
-                // ถ้าหารหัสไม่เจอ
-                if (!user) {
-                    alert("❌ ไม่พบรหัสพนักงานนี้ในระบบ");
-                    return;
-                }
-
-                // ถ้ารหัสเจอ แต่ PIN ไม่ตรง
-                if (user.pin !== pin) {
-                    alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง");
-                    return;
-                }
-
-                // ถ้ารหัสและ PIN ถูกต้อง ให้เข้าระบบได้!
-                currentUser = id; 
+                currentUser = user.empId; 
                 currentPin = pin;
+
+                // เช็คว่าวันนี้พนักงานคนนี้เคยกดอะไรไปแล้วบ้าง
+                const myLogsToday = logs.filter(l => l.empId.toLowerCase() === currentUser.toLowerCase());
+                const hasClockedIn = myLogsToday.some(l => l.type === 'เข้างาน');
+                const hasClockedOut = myLogsToday.some(l => l.type === 'ออกงาน');
+                const hasLeave = myLogsToday.some(l => l.type === 'ลางาน');
+
+                // จัดการปุ่มตามสถานะจริง
+                const btnIn = document.getElementById('btnIn');
+                const btnOut = document.getElementById('btnOut');
+                const btnLeave = document.getElementById('btnLeave');
+
+                btnIn.disabled = hasClockedIn;
+                btnIn.innerText = hasClockedIn ? "✅ เข้างานแล้ว" : "เข้างาน";
+
+                btnOut.disabled = hasClockedOut;
+                btnOut.innerText = hasClockedOut ? "✅ ออกงานแล้ว" : "ออกงาน";
+
+                btnLeave.disabled = hasLeave;
+                btnLeave.innerText = hasLeave ? "✅ แจ้งลางานแล้ว" : "📝 แจ้งลางาน";
                 
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('mainScreen').style.display = 'block';
-                
-                // โชว์ชื่อพนักงานพ่วงไปด้วยเลย
                 document.getElementById('displayId').innerText = user.name + " (" + currentUser + ")";
             })
             .catch(err => {
@@ -217,9 +230,6 @@ function login() {
         }
 
         function processRecord(type, btn, requireGeofence) {
-            const actionKey = `log_${currentUser}_${getStandardDate()}_${type}`;
-            if(localStorage.getItem(actionKey)) return alert(`คุณกด ${type} วันนี้ไปแล้ว`);
-
             let remark = "";
             if(type === 'ลางาน') {
                 remark = prompt("เหตุผลการลา:");
@@ -237,7 +247,10 @@ function login() {
                     
                     btn.innerText = "กำลังบันทึก...";
                     postData(payload, `บันทึก ${type} สำเร็จ`, () => {
-                        localStorage.setItem(actionKey, 'done'); btn.innerText = origText; btn.disabled = false; logout();
+                        // ไม่ใช้ localStorage แล้ว เมื่อบันทึกเสร็จให้เด้งออกไปหน้า Login ทันที
+                        btn.innerText = origText; 
+                        btn.disabled = false; 
+                        logout();
                     });
                 },
                 () => { alert("กรุณาเปิด GPS"); btn.innerText = origText; btn.disabled = false; },
@@ -249,7 +262,7 @@ function login() {
         function openDashboard() {
             closeScreens(); document.getElementById('dashboardScreen').style.display = 'block';
             document.getElementById('dashContent').innerHTML = "⏳ โหลดข้อมูล...";
-            fetch(SCRIPT_URL + "?action=getLogs&date=" + getStandardDate())
+            fetch(SCRIPT_URL + "?action=getLogs&date=" + getStandardDate() + "&t=" + new Date().getTime())
             .then(res => res.json()).then(data => {
                 if(data.length === 0) return document.getElementById('dashContent').innerHTML = "ไม่มีข้อมูลวันนี้";
                 let html = "";
@@ -284,7 +297,7 @@ function login() {
             const content = document.getElementById('adminLogsContent');
             content.innerHTML = "⏳ โหลดข้อมูล...";
 
-            fetch(SCRIPT_URL + `?action=getLogs&date=${searchDate}`)
+            fetch(SCRIPT_URL + `?action=getLogs&date=${searchDate}&t=${new Date().getTime()}`)
             .then(res => res.json()).then(data => {
                 if(data.length === 0) return content.innerHTML = "ไม่พบข้อมูลในวันที่เลือก";
                 let html = "";
@@ -320,7 +333,7 @@ function login() {
         function fetchAdminUsers() {
             const content = document.getElementById('adminUsersContent');
             content.innerHTML = "⏳ โหลดข้อมูล...";
-            fetch(SCRIPT_URL + "?action=getUsers")
+            fetch(SCRIPT_URL + "?action=getUsers&t=" + new Date().getTime())
             .then(res => res.json()).then(data => {
                 if(data.length === 0) return content.innerHTML = "ยังไม่มีพนักงานในระบบ";
                 let html = "";
