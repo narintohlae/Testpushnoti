@@ -9,9 +9,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
         .animate-pulse-dot { animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         .fade-enter { opacity: 0; transform: translateY(10px); transition: all 0.4s ease-out; }
@@ -97,6 +98,11 @@
                     <div class="w-80 h-80 border border-gray-200 rounded-full absolute opacity-30"></div>
                 </div>
 
+                <!-- แสดงเวลาทำงานของพนักงาน -->
+                <div id="user-schedule-display" class="relative z-10 bg-white px-4 py-1.5 rounded-full shadow-sm border border-gray-100 text-xs font-bold text-gray-500 mb-4 hidden">
+                    เวลาทำงาน: <span id="schedule-time" class="text-blue-600">--:-- - --:--</span>
+                </div>
+
                 <button id="btn-action" disabled class="relative z-10 w-44 h-44 rounded-full flex flex-col items-center justify-center gap-3 text-white shadow-2xl transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-300">
                     <i id="action-icon" data-lucide="fingerprint" class="w-12 h-12"></i>
                     <span id="action-text" class="text-xl font-bold tracking-wide">กำลังโหลด</span>
@@ -126,7 +132,10 @@
                 <h2 class="text-lg font-bold text-gray-900">จัดการวันลา</h2>
                 <div class="w-10"></div>
             </div>
-            <div class="flex-1 overflow-y-auto p-4 relative space-y-3" id="user-leaves-container"></div>
+            <div class="flex-1 overflow-y-auto p-4 relative">
+                <div id="user-upcoming-holidays"></div>
+                <div id="user-leaves-container" class="space-y-3 mt-2"></div>
+            </div>
             <button onclick="switchScreen('screen-leave-form')" class="absolute bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-xl shadow-orange-200 flex items-center justify-center active:scale-95 transition-all">
                 <i data-lucide="plus" class="w-6 h-6"></i>
             </button>
@@ -198,27 +207,98 @@
                 </div>
             </div>
 
-            <div class="flex bg-white border-b border-gray-200 z-10 shadow-sm">
-                <button onclick="switchAdminTab('logs')" id="tab-logs" class="flex-1 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors">เข้า-ออก</button>
-                <button onclick="switchAdminTab('leaves')" id="tab-leaves" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">ลางาน</button>
-                <button onclick="switchAdminTab('users')" id="tab-users" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">พนักงาน</button>
+            <!-- Scrollable Tabs -->
+            <div class="flex bg-white border-b border-gray-200 z-10 shadow-sm overflow-x-auto hide-scrollbar whitespace-nowrap px-2">
+                <button onclick="switchAdminTab('logs')" id="tab-logs" class="px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors">เข้า-ออก</button>
+                <button onclick="switchAdminTab('leaves')" id="tab-leaves" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">ลางาน</button>
+                <button onclick="switchAdminTab('holidays')" id="tab-holidays" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">วันหยุด</button>
+                <button onclick="switchAdminTab('payroll')" id="tab-payroll" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">เงินเดือน</button>
+                <button onclick="switchAdminTab('users')" id="tab-users" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">พนักงาน</button>
+                <button onclick="switchAdminTab('stats')" id="tab-stats" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">สถิติ</button>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 relative bg-gray-50">
                 <div id="admin-content-logs" class="space-y-3"></div>
                 <div id="admin-content-leaves" class="space-y-3 hidden"></div>
                 
+                <!-- Holidays Tab -->
+                <div id="admin-content-holidays" class="hidden flex-col gap-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                        <h4 class="font-bold text-sm mb-3 text-gray-800 flex items-center gap-2"><i data-lucide="calendar-heart" class="w-4 h-4 text-pink-500"></i>เพิ่มวันหยุดบริษัท</h4>
+                        <div class="flex gap-2 mb-3">
+                            <input type="date" id="admin-new-holiday-date" class="w-2/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="text" id="admin-new-holiday-name" placeholder="ชื่อวันหยุด" class="w-3/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <button onclick="adminAddHoliday()" class="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold py-2.5 rounded-lg transition-colors">บันทึกวันหยุด</button>
+                    </div>
+                    <div id="admin-holidays-list" class="space-y-3"></div>
+                </div>
+
+                <!-- Payroll Tab -->
+                <div id="admin-content-payroll" class="hidden flex-col gap-4">
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
+                        <button onclick="changePayrollWeek(-1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition"><i data-lucide="chevron-left" class="w-5 h-5 text-gray-600"></i></button>
+                        <div class="text-center">
+                            <p class="text-[10px] text-gray-400 font-medium">รอบการจ่ายเงิน (รายสัปดาห์)</p>
+                            <span id="payroll-week-display" class="font-bold text-sm text-blue-600">--</span>
+                        </div>
+                        <button onclick="changePayrollWeek(1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition"><i data-lucide="chevron-right" class="w-5 h-5 text-gray-600"></i></button>
+                    </div>
+                    <div id="payroll-list" class="space-y-3"></div>
+                </div>
+                
                 <!-- Users Tab with Creation Form -->
                 <div id="admin-content-users" class="hidden flex-col gap-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <h4 class="font-bold text-sm mb-3 text-gray-800 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4 text-blue-600"></i>เพิ่มพนักงานใหม่</h4>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="admin-new-empid" placeholder="รหัส (เช่น E001)" class="w-1/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm uppercase">
+                            <input type="text" id="admin-new-empname" placeholder="ชื่อ-นามสกุล" class="w-2/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <div class="flex gap-2 mb-2">
+                            <div class="w-1/2">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเข้างาน</label>
+                                <input type="time" id="admin-new-workstart" value="09:00" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเลิกงาน</label>
+                                <input type="time" id="admin-new-workend" value="18:00" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            </div>
+                        </div>
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="admin-new-empid" placeholder="รหัส (เช่น E001)" class="w-2/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm uppercase">
-                            <input type="text" id="admin-new-empname" placeholder="ชื่อ-นามสกุล" class="w-3/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <div class="w-1/4">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">ค่าแรง(บ./วัน)</label>
+                                <input type="number" id="admin-new-emprate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
+                            </div>
+                            <div class="w-1/4">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">OT(บ./ชม.)</label>
+                                <input type="number" id="admin-new-empotrate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
+                            </div>
+                            <div class="w-1/4">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">วันลาต่อปี</label>
+                                <input type="number" id="admin-new-leavequota" value="10" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
+                            </div>
+                            <div class="w-1/4">
+                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">หยุดสัปดาห์ละ</label>
+                                <select id="admin-new-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
+                                    <option value="0">อาทิตย์</option>
+                                    <option value="1">จันทร์</option>
+                                    <option value="2">อังคาร</option>
+                                    <option value="3">พุธ</option>
+                                    <option value="4">พฤหัสบดี</option>
+                                    <option value="5">ศุกร์</option>
+                                    <option value="6">เสาร์</option>
+                                </select>
+                            </div>
                         </div>
                         <button onclick="adminCreateEmployee()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors">บันทึกข้อมูลพนักงาน</button>
                     </div>
                     <div id="admin-users-list" class="space-y-3"></div>
+                </div>
+
+                <!-- Stats/Analytics Tab -->
+                <div id="admin-content-stats" class="hidden flex-col gap-4">
+                    <!-- Stats will be injected here -->
                 </div>
             </div>
         </div>
@@ -247,6 +327,65 @@
             </div>
         </div>
 
+        <!-- Edit Employee Modal -->
+        <div id="modal-edit-employee" class="absolute inset-0 z-[55] hidden items-center justify-center modal-bg p-4 opacity-0 transition-opacity duration-300">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-edit-employee-content">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5 text-blue-600"></i> แก้ไขข้อมูลพนักงาน</h3>
+                    <button onclick="closeEditEmployeeModal()" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+                <div class="space-y-3 mb-5">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">รหัสพนักงาน (ไม่สามารถแก้ได้)</label>
+                        <input type="text" id="edit-emp-id" disabled class="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500 font-bold uppercase cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">ชื่อ-นามสกุล</label>
+                        <input type="text" id="edit-emp-name" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">เวลาเข้างาน</label>
+                            <input type="time" id="edit-emp-workstart" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">เวลาเลิกงาน</label>
+                            <input type="time" id="edit-emp-workend" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">ค่าแรง(บ./วัน)</label>
+                            <input type="number" id="edit-emp-rate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">OT (บ./ชม.)</label>
+                            <input type="number" id="edit-emp-otrate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">โควตาลา(วัน)</label>
+                            <input type="number" id="edit-emp-leavequota" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">วันหยุดประจำสัปดาห์</label>
+                            <select id="edit-emp-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                                <option value="0">อาทิตย์</option>
+                                <option value="1">จันทร์</option>
+                                <option value="2">อังคาร</option>
+                                <option value="3">พุธ</option>
+                                <option value="4">พฤหัสบดี</option>
+                                <option value="5">ศุกร์</option>
+                                <option value="6">เสาร์</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <button id="btn-save-edit" onclick="saveEditEmployee()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">บันทึกการแก้ไข</button>
+            </div>
+        </div>
+
     </div>
 
     <!-- Firebase Script & App Logic -->
@@ -264,10 +403,15 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-time-tracker';
 
         let currentUser = null, userProfile = null, savedEmpId = null;
-        let allLogs = [], allProfiles = [], allLeaves = [];
-        let unsubscribeLogs = null, unsubscribeProfiles = null, unsubscribeLeaves = null;
+        let allLogs = [], allProfiles = [], allLeaves = [], allHolidays = [];
+        let unsubscribeLogs = null, unsubscribeProfiles = null, unsubscribeLeaves = null, unsubscribeHolidays = null;
         let currentStatus = 'unknown';
         const ADMIN_PIN = "9999";
+
+        let currDate = new Date();
+        let dayOfWeek = currDate.getDay(), diffDate = currDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+        let payrollWeekStart = new Date(currDate.setDate(diffDate));
+        payrollWeekStart.setHours(0, 0, 0, 0);
 
         const leaveTypes = { 'sick': 'ลาป่วย', 'personal': 'ลากิจ', 'vacation': 'ลาพักร้อน' };
         const statusConfig = {
@@ -275,6 +419,7 @@
             'approved': { label: 'อนุมัติแล้ว', bg: 'bg-green-100', text: 'text-green-700', icon: 'check-circle' },
             'rejected': { label: 'ไม่อนุมัติ', bg: 'bg-red-100', text: 'text-red-700', icon: 'x-circle' }
         };
+        const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 
         const initAuth = async () => {
             try {
@@ -288,13 +433,12 @@
             if (user) {
                 currentUser = user; 
                 await loadDeviceLink(); 
-                setupPublicDataListeners(); // เริ่มโหลดข้อมูลสาธารณะ (Profile ถูกเช็คในนี้)
+                setupPublicDataListeners();
             } else { 
                 currentUser = null; window.switchScreen('screen-loading'); 
             }
         });
 
-        // ดึงข้อมูลว่าอุปกรณ์นี้เคยผูกกับรหัสพนักงานใดไว้
         async function loadDeviceLink() {
             try {
                 const snap = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'link'));
@@ -302,7 +446,6 @@
             } catch(e) {}
         }
 
-        // ระบบพนักงานล็อกอินด้วยรหัส
         window.loginWithEmpId = async () => {
             if (!currentUser) return;
             const inputEl = document.getElementById('input-emp-id');
@@ -326,20 +469,15 @@
                 updateUserDashboardState(); renderUserLogs(); renderUserLeaves();
                 window.switchScreen('screen-dashboard');
                 inputEl.value = '';
-            } catch(e) { 
-                window.showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error"); 
-            } finally { 
-                btnEl.disabled = false; btnEl.innerHTML = '<span>ตรวจสอบรหัส</span><i data-lucide="arrow-right" class="w-4 h-4"></i>'; lucide.createIcons(); 
-            }
+            } catch(e) { window.showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error"); } 
+            finally { btnEl.disabled = false; btnEl.innerHTML = '<span>ตรวจสอบรหัส</span><i data-lucide="arrow-right" class="w-4 h-4"></i>'; lucide.createIcons(); }
         };
 
-        // ระบบออกจากระบบ
         window.logoutEmployee = () => {
             window.showConfirm("ออกจากระบบ", "ต้องการออกจากระบบในอุปกรณ์นี้ใช่หรือไม่?", async () => {
                 try {
                     await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'link'));
-                    userProfile = null;
-                    savedEmpId = null;
+                    userProfile = null; savedEmpId = null;
                     window.switchScreen('screen-setup');
                     window.showToast("ออกจากระบบเรียบร้อย", "success");
                 } catch(e) { window.showToast("เกิดข้อผิดพลาด", "error"); }
@@ -354,7 +492,6 @@
                 let temp = []; snapshot.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
                 allProfiles = temp.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 
-                // ตรวจสอบความถูกต้องของการล็อกอินหลังจากโหลดข้อมูลเสร็จ
                 if (savedEmpId && !userProfile) {
                     const matchedProfile = allProfiles.find(p => p.empId === savedEmpId);
                     if (matchedProfile) {
@@ -362,21 +499,17 @@
                         document.getElementById('display-name').textContent = matchedProfile.name;
                         document.getElementById('display-emp-id').textContent = matchedProfile.empId;
                         window.switchScreen('screen-dashboard');
-                    } else {
-                        savedEmpId = null; window.switchScreen('screen-setup'); // ถูกลบตอนออฟไลน์
-                    }
+                    } else { savedEmpId = null; window.switchScreen('screen-setup'); }
                 } else if (userProfile) {
-                    // หากถูกแอดมินลบโปรไฟล์ออกขณะที่กำลังใช้งาน
                     if (!allProfiles.find(p => p.empId === userProfile.empId)) {
                         userProfile = null; savedEmpId = null;
                         window.switchScreen('screen-setup');
                         window.showToast("รหัสพนักงานนี้ถูกเพิกถอนจากระบบ", "error");
                     }
-                } else if (!savedEmpId && !userProfile) {
-                    window.switchScreen('screen-setup');
                 }
+                if (!savedEmpId && !userProfile) { window.switchScreen('screen-setup'); }
 
-                renderAdminUsers(); updateAdminStats();
+                renderAdminUsers(); updateAdminStats(); renderAdminPayroll(); renderAdminStatsDashboard();
                 if (userProfile) { updateUserDashboardState(); renderUserLogs(); renderUserLeaves(); }
             }, (err) => console.error(err));
 
@@ -385,7 +518,7 @@
                 let temp = []; snapshot.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
                 allLogs = temp.sort((a, b) => b.timestamp - a.timestamp);
                 if(userProfile) { updateUserDashboardState(); renderUserLogs(); }
-                renderAdminLogs(); updateAdminStats();
+                renderAdminLogs(); updateAdminStats(); renderAdminPayroll(); renderAdminStatsDashboard();
             }, (err) => console.error(err));
 
             if (unsubscribeLeaves) unsubscribeLeaves();
@@ -393,8 +526,23 @@
                 let temp = []; snapshot.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
                 allLeaves = temp.sort((a, b) => b.timestamp - a.timestamp);
                 if(userProfile) renderUserLeaves();
-                renderAdminLeaves(); updateAdminStats();
+                renderAdminLeaves(); updateAdminStats(); renderAdminStatsDashboard();
             }, (err) => console.error(err));
+
+            if (unsubscribeHolidays) unsubscribeHolidays();
+            unsubscribeHolidays = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'holidays'), (snapshot) => {
+                let temp = []; snapshot.forEach(doc => temp.push({ id: doc.id, ...doc.data() }));
+                allHolidays = temp.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                if(userProfile) renderUserHolidays();
+                renderAdminHolidays(); renderAdminPayroll();
+            }, (err) => console.error(err));
+        }
+
+        // --- Utils for Leaves Calculation ---
+        function calculateLeaveDays(startStr, endStr) {
+            const s = new Date(startStr).setHours(0,0,0,0);
+            const e = new Date(endStr).setHours(0,0,0,0);
+            return Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
         }
 
         // --- Core Actions ---
@@ -405,13 +553,33 @@
             btnAction.disabled = true; const originalHTML = btnAction.innerHTML;
             btnAction.innerHTML = '<i data-lucide="loader-2" class="w-12 h-12 animate-spin"></i><span class="text-xl font-bold">กำลังบันทึก...</span>'; lucide.createIcons();
 
-            try {
-                // บันทึกโดยอ้างอิง empId แทน userId
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'time_logs'), { empId: userProfile.empId, employeeName: userProfile.name, type: actionType, timestamp: Date.now() });
-                window.showToast(`บันทึกเวลา${actionType === 'in' ? 'เข้างาน' : 'ออกงาน'}สำเร็จ!`, "success");
-            } catch (error) {
-                window.showToast("เกิดข้อผิดพลาดในการบันทึก", "error"); btnAction.innerHTML = originalHTML; btnAction.disabled = false; lucide.createIcons();
+            let isLate = false; let otHours = 0; let otPay = 0;
+
+            if (actionType === 'in' && userProfile.workStartTime) {
+                const now = new Date(); const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+                const [startH, startM] = userProfile.workStartTime.split(':').map(Number);
+                if (currentTotalMins > (startH * 60 + startM)) isLate = true;
+            } else if (actionType === 'out' && userProfile.workEndTime) {
+                const now = new Date(); const currentTotalMins = now.getHours() * 60 + now.getMinutes();
+                const [endH, endM] = userProfile.workEndTime.split(':').map(Number);
+                const endTotalMins = endH * 60 + endM;
+
+                if (currentTotalMins > endTotalMins) {
+                    otHours = Math.round(((currentTotalMins - endTotalMins) / 60) * 10) / 10;
+                    otPay = Math.round(otHours * (userProfile.otRate || 0));
+                }
             }
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'time_logs'), { 
+                    empId: userProfile.empId, employeeName: userProfile.name, type: actionType, 
+                    isLate: isLate, otHours: otHours, otPay: otPay, timestamp: Date.now() 
+                });
+                let toastMsg = `บันทึกเวลา${actionType === 'in' ? 'เข้างาน' : 'ออกงาน'}สำเร็จ!`;
+                if (isLate) toastMsg += ' (คุณเข้างานสาย)';
+                if (otHours > 0) toastMsg += ` (ได้ OT ${otHours} ชม.)`;
+                window.showToast(toastMsg, "success");
+            } catch (error) { window.showToast("เกิดข้อผิดพลาดในการบันทึก", "error"); btnAction.innerHTML = originalHTML; btnAction.disabled = false; lucide.createIcons(); }
         };
 
         window.submitLeave = async () => {
@@ -420,6 +588,15 @@
             const type = document.getElementById('leave-type').value, startDate = document.getElementById('leave-start').value, endDate = document.getElementById('leave-end').value, reason = document.getElementById('leave-reason').value.trim();
             if(!startDate || !endDate || !reason) { window.showToast("กรุณากรอกข้อมูลให้ครบ", "error"); return; }
             if(new Date(endDate) < new Date(startDate)) { window.showToast("วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่ม", "error"); return; }
+
+            // เช็คโควตาก่อนส่ง
+            const usedLeaves = allLeaves.filter(l => l.empId === userProfile.empId && l.status === 'approved').reduce((sum, l) => sum + calculateLeaveDays(l.startDate, l.endDate), 0);
+            const reqDays = calculateLeaveDays(startDate, endDate);
+            const remain = Math.max(0, (userProfile.leaveQuota || 10) - usedLeaves);
+            
+            if (reqDays > remain) {
+                return window.showToast(`ไม่สามารถลาได้ (ขอลา ${reqDays} วัน, โควตาเหลือ ${remain} วัน)`, "error");
+            }
 
             btnSubmit.disabled = true; btnSubmit.innerHTML = 'กำลังบันทึก...';
             try {
@@ -434,13 +611,27 @@
         window.adminCreateEmployee = async () => {
             const empId = document.getElementById('admin-new-empid').value.trim().toUpperCase();
             const name = document.getElementById('admin-new-empname').value.trim();
-            if(!empId || !name) return window.showToast("กรุณากรอกข้อมูลให้ครบ", "error");
+            const dailyRate = parseInt(document.getElementById('admin-new-emprate').value.trim()) || 0;
+            const otRateStr = document.getElementById('admin-new-empotrate').value.trim();
+            const leaveQuota = parseInt(document.getElementById('admin-new-leavequota').value.trim()) || 10;
+            const weeklyDayOff = document.getElementById('admin-new-weeklyoff').value || "0";
+            const workStartTime = document.getElementById('admin-new-workstart').value || "09:00";
+            const workEndTime = document.getElementById('admin-new-workend').value || "18:00";
+            
+            const otRate = otRateStr ? parseInt(otRateStr) : Math.round((dailyRate / 8) * 1.5);
+            
+            if(!empId || !name || dailyRate <= 0) return window.showToast("กรุณากรอกข้อมูลและค่าแรงให้ครบถ้วน", "error");
             if(allProfiles.some(p => p.empId === empId)) return window.showToast("รหัสพนักงานนี้มีในระบบแล้ว", "error");
 
             try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', empId), { empId, name, createdAt: Date.now() });
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', empId), { 
+                    empId, name, dailyRate, otRate, leaveQuota, weeklyDayOff, workStartTime, workEndTime, createdAt: Date.now() 
+                });
                 window.showToast("สร้างพนักงานใหม่สำเร็จ", "success");
-                document.getElementById('admin-new-empid').value = ''; document.getElementById('admin-new-empname').value = '';
+                document.getElementById('admin-new-empid').value = ''; document.getElementById('admin-new-empname').value = ''; 
+                document.getElementById('admin-new-emprate').value = ''; document.getElementById('admin-new-empotrate').value = '';
+                document.getElementById('admin-new-weeklyoff').value = '0';
+                document.getElementById('admin-new-workstart').value = '09:00'; document.getElementById('admin-new-workend').value = '18:00';
             } catch(e) { window.showToast("เกิดข้อผิดพลาดในการสร้าง", "error"); }
         };
 
@@ -468,9 +659,116 @@
              }, 'bg-red-600');
         };
 
+        window.adminAddHoliday = async () => {
+            const dateStr = document.getElementById('admin-new-holiday-date').value;
+            const name = document.getElementById('admin-new-holiday-name').value.trim();
+            if(!dateStr || !name) return window.showToast("กรุณากรอกวันที่และชื่อวันหยุด", "error");
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'holidays'), { 
+                    date: dateStr, name, timestamp: Date.now() 
+                });
+                window.showToast("เพิ่มวันหยุดสำเร็จ", "success");
+                document.getElementById('admin-new-holiday-date').value = ''; 
+                document.getElementById('admin-new-holiday-name').value = '';
+            } catch(e) { window.showToast("เกิดข้อผิดพลาด", "error"); }
+        };
+
+        window.deleteHoliday = (id) => {
+             window.showConfirm("ยืนยันการลบ", "ต้องการลบวันหยุดนี้ใช่หรือไม่?", async () => {
+                 try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'holidays', id)); window.showToast("ลบสำเร็จ", "success"); } 
+                 catch(e) { window.showToast("ไม่สามารถลบได้", "error"); }
+             }, 'bg-red-600');
+        };
+
+        // --- Edit Employee System ---
+        window.openEditEmployeeModal = (empId) => {
+            const profile = allProfiles.find(p => p.empId === empId);
+            if(!profile) return;
+            
+            document.getElementById('edit-emp-id').value = profile.empId;
+            document.getElementById('edit-emp-name').value = profile.name || '';
+            document.getElementById('edit-emp-workstart').value = profile.workStartTime || '09:00';
+            document.getElementById('edit-emp-workend').value = profile.workEndTime || '18:00';
+            document.getElementById('edit-emp-rate').value = profile.dailyRate || 0;
+            document.getElementById('edit-emp-otrate').value = profile.otRate || 0;
+            document.getElementById('edit-emp-leavequota').value = profile.leaveQuota || 10;
+            document.getElementById('edit-emp-weeklyoff').value = profile.weeklyDayOff || '0';
+
+            const m = document.getElementById('modal-edit-employee'), c = document.getElementById('modal-edit-employee-content');
+            m.classList.remove('hidden'); m.classList.add('flex');
+            requestAnimationFrame(() => { m.classList.remove('opacity-0'); c.classList.remove('scale-95'); });
+            lucide.createIcons();
+        };
+
+        window.closeEditEmployeeModal = () => {
+            const m = document.getElementById('modal-edit-employee'), c = document.getElementById('modal-edit-employee-content');
+            m.classList.add('opacity-0'); c.classList.add('scale-95');
+            setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300);
+        };
+
+        window.saveEditEmployee = async () => {
+            const empId = document.getElementById('edit-emp-id').value;
+            const name = document.getElementById('edit-emp-name').value.trim();
+            const dailyRate = parseInt(document.getElementById('edit-emp-rate').value) || 0;
+            const otRate = parseInt(document.getElementById('edit-emp-otrate').value) || 0;
+            const leaveQuota = parseInt(document.getElementById('edit-emp-leavequota').value) || 0;
+            const weeklyDayOff = document.getElementById('edit-emp-weeklyoff').value || "0";
+            const workStartTime = document.getElementById('edit-emp-workstart').value || "09:00";
+            const workEndTime = document.getElementById('edit-emp-workend').value || "18:00";
+
+            if(!name || dailyRate <= 0) return window.showToast("กรุณากรอกข้อมูลและค่าแรงให้ครบถ้วน", "error");
+
+            const btn = document.getElementById('btn-save-edit');
+            btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> บันทึก...'; lucide.createIcons();
+
+            try {
+                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', empId), {
+                    name, dailyRate, otRate, leaveQuota, weeklyDayOff, workStartTime, workEndTime, updatedAt: Date.now()
+                });
+                window.showToast("บันทึกการแก้ไขสำเร็จ", "success");
+                window.closeEditEmployeeModal();
+            } catch(e) { window.showToast("เกิดข้อผิดพลาดในการแก้ไข", "error"); }
+            finally { btn.disabled = false; btn.innerHTML = 'บันทึกการแก้ไข'; }
+        };
+
+        // --- Export CSV ---
+        window.exportLogsToCSV = () => {
+            if (allLogs.length === 0) return window.showToast("ไม่มีข้อมูลให้ส่งออก", "error");
+            
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF is BOM for Excel to read Thai correctly
+            csvContent += "วันที่,เวลา,รหัสพนักงาน,ชื่อพนักงาน,รายการ,สถานะ,ชั่วโมง OT\n";
+
+            allLogs.forEach(log => {
+                const date = new Date(log.timestamp).toLocaleDateString('th-TH');
+                const time = new Date(log.timestamp).toLocaleTimeString('th-TH');
+                const type = log.type === 'in' ? 'เข้างาน' : 'ออกงาน';
+                const status = log.isLate ? 'สาย' : 'ปกติ';
+                const ot = log.otHours || 0;
+                csvContent += `${date},${time},${log.empId},${log.employeeName},${type},${status},${ot}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `timelogs_${new Date().getTime()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.showToast("ดาวน์โหลดรายงานสำเร็จ", "success");
+        };
+
         // --- Render Functions ---
         function updateUserDashboardState() {
             if(!userProfile) return;
+            
+            const scheduleDisplay = document.getElementById('user-schedule-display');
+            if (userProfile.workStartTime && userProfile.workEndTime) {
+                const offDayStr = dayNames[parseInt(userProfile.weeklyDayOff || 0)];
+                document.getElementById('schedule-time').textContent = `${userProfile.workStartTime} - ${userProfile.workEndTime} (หยุด: ${offDayStr})`;
+                scheduleDisplay.classList.remove('hidden');
+            } else { scheduleDisplay.classList.add('hidden'); }
+
             const userLogs = allLogs.filter(log => log.empId === userProfile.empId);
             const latestLog = userLogs[0];
             const btnAction = document.getElementById('btn-action');
@@ -495,7 +793,9 @@
             userLogs.forEach((log, i) => {
                 const isOpIn = log.type === 'in';
                 const dateStr = new Date(log.timestamp).setHours(0,0,0,0) === new Date().setHours(0,0,0,0) ? 'วันนี้' : new Date(log.timestamp).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
-                html += `<div class="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-2xl fade-enter" style="animation-delay: ${i*40}ms"><div class="flex items-center gap-3"><div class="w-10 h-10 ${isOpIn ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-500'} rounded-xl flex items-center justify-center"><i data-lucide="${isOpIn ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i></div><div><p class="text-sm font-bold text-gray-800">${isOpIn ? 'เข้างาน' : 'ออกงาน'}</p><p class="text-xs text-gray-500">${dateStr}</p></div></div><div class="text-right"><span class="text-base font-bold text-gray-900">${new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span><span class="text-xs text-gray-500 block">น.</span></div></div>`;
+                const lateBadge = log.isLate ? '<span class="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">สาย</span>' : '';
+                const otBadge = (log.otHours > 0) ? `<span class="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded font-bold">OT ${log.otHours} ชม.</span>` : '';
+                html += `<div class="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-2xl fade-enter" style="animation-delay: ${i*40}ms"><div class="flex items-center gap-3"><div class="w-10 h-10 ${isOpIn ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-500'} rounded-xl flex items-center justify-center"><i data-lucide="${isOpIn ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i></div><div><p class="text-sm font-bold text-gray-800">${isOpIn ? 'เข้างาน' : 'ออกงาน'}${lateBadge}${otBadge}</p><p class="text-xs text-gray-500">${dateStr}</p></div></div><div class="text-right"><span class="text-base font-bold text-gray-900">${new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span><span class="text-xs text-gray-500 block">น.</span></div></div>`;
             });
             container.innerHTML = html + '</div>'; lucide.createIcons(); setTimeout(() => container.querySelectorAll('.fade-enter').forEach(el => el.classList.add('fade-enter-active')), 50);
         }
@@ -504,12 +804,51 @@
             if(!userProfile) return;
             const container = document.getElementById('user-leaves-container');
             const userLeaves = allLeaves.filter(l => l.empId === userProfile.empId);
-            if(userLeaves.length === 0) { container.innerHTML = `<div class="flex flex-col items-center justify-center h-[50vh] text-gray-400"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"><i data-lucide="file-text" class="w-8 h-8 text-gray-300"></i></div><p>ยังไม่มีประวัติการลางาน</p></div>`; lucide.createIcons(); return; }
-            let html = '';
+            
+            // สรุปโควตา
+            const usedLeaves = userLeaves.filter(l => l.status === 'approved').reduce((sum, l) => sum + calculateLeaveDays(l.startDate, l.endDate), 0);
+            const quota = userProfile.leaveQuota || 10;
+            const remain = Math.max(0, quota - usedLeaves);
+
+            let html = `
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 flex justify-between items-center mb-2">
+                    <div>
+                        <p class="text-xs text-blue-600 font-medium">โควตาวันลาต่อปี</p>
+                        <p class="text-[10px] text-blue-500 mt-1">ใช้ไปแล้ว ${usedLeaves} วัน</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-bold text-blue-700">${remain} <span class="text-sm">วัน</span></span>
+                    </div>
+                </div>
+            `;
+
+            if(userLeaves.length === 0) { 
+                container.innerHTML = html + `<div class="flex flex-col items-center justify-center h-[40vh] text-gray-400"><div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4"><i data-lucide="file-text" class="w-8 h-8 text-gray-300"></i></div><p>ยังไม่มีประวัติการลางาน</p></div>`; 
+                lucide.createIcons(); return; 
+            }
+            
             userLeaves.forEach(leave => {
                 const conf = statusConfig[leave.status];
                 html += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative"><div class="flex justify-between items-start mb-2"><div><h3 class="font-bold text-gray-900">${leaveTypes[leave.type]}</h3><p class="text-xs text-gray-500">${new Date(leave.startDate).toLocaleDateString('th-TH', { day:'numeric', month:'short' })} - ${new Date(leave.endDate).toLocaleDateString('th-TH', { day:'numeric', month:'short' })}</p></div><span class="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${conf.bg} ${conf.text}"><i data-lucide="${conf.icon}" class="w-3 h-3"></i> ${conf.label}</span></div><p class="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg mt-2">${leave.reason}</p></div>`;
             });
+            container.innerHTML = html; lucide.createIcons();
+        }
+
+        function renderUserHolidays() {
+            const container = document.getElementById('user-upcoming-holidays');
+            const now = new Date().setHours(0,0,0,0);
+            const upcoming = allHolidays.filter(h => new Date(h.date).getTime() >= now).slice(0, 3);
+            
+            if (upcoming.length === 0) { container.innerHTML = ''; return; }
+            
+            let html = `<div class="bg-pink-50 border border-pink-100 rounded-xl p-3 mb-3">
+                <h3 class="text-[11px] font-bold text-pink-600 mb-2 flex items-center gap-1"><i data-lucide="calendar-heart" class="w-3 h-3"></i> วันหยุดบริษัทเร็วๆ นี้</h3>
+                <div class="space-y-2">`;
+            upcoming.forEach(h => {
+                const dStr = new Date(h.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' });
+                html += `<div class="flex justify-between items-center bg-white/60 p-2 rounded-lg"><span class="text-xs font-bold text-gray-800">${h.name}</span><span class="text-[10px] text-gray-500 font-medium">${dStr}</span></div>`;
+            });
+            html += `</div></div>`;
             container.innerHTML = html; lucide.createIcons();
         }
 
@@ -526,7 +865,9 @@
             allLogs.slice(0, 50).forEach(log => {
                 const isOpIn = log.type === 'in';
                 const dStr = new Date(log.timestamp).toLocaleDateString('th-TH', {day:'numeric', month:'short'}) + ' ' + new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-2 h-10 rounded-full ${isOpIn ? 'bg-green-400' : 'bg-orange-400'}"></div><div><h4 class="font-bold text-sm text-gray-900">${log.employeeName || '?'} <span class="text-gray-400 font-normal">(${log.empId})</span></h4><p class="text-xs text-gray-500"><span class="${isOpIn ? 'text-green-600' : 'text-orange-500'} font-medium">${isOpIn ? 'เข้า' : 'ออก'}</span> • ${dStr}</p></div></div><button onclick="deleteLog('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
+                const lateBadge = log.isLate ? '<span class="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded font-bold">สาย</span>' : '';
+                const otBadge = (log.otHours > 0) ? `<span class="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded font-bold">OT ${log.otHours}h</span>` : '';
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-2 h-10 rounded-full ${isOpIn ? 'bg-green-400' : 'bg-orange-400'}"></div><div><h4 class="font-bold text-sm text-gray-900">${log.employeeName || '?'} <span class="text-gray-400 font-normal">(${log.empId})</span></h4><p class="text-xs text-gray-500"><span class="${isOpIn ? 'text-green-600' : 'text-orange-500'} font-medium">${isOpIn ? 'เข้า' : 'ออก'}</span>${lateBadge}${otBadge} • ${dStr}</p></div></div><button onclick="deleteLog('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -548,23 +889,157 @@
             if (allProfiles.length === 0) { container.innerHTML = `<p class="text-center text-gray-400 py-10 text-sm">ยังไม่มีข้อมูลพนักงาน</p>`; return; }
             let html = '';
             allProfiles.forEach(profile => {
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">${(profile.name || '?').charAt(0)}</div><div><h4 class="font-bold text-sm text-gray-900">${profile.name}</h4><p class="text-[10px] font-bold text-gray-400">รหัส: ${profile.empId}</p></div></div><button onclick="deleteProfile('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="user-minus" class="w-4 h-4"></i></button></div>`;
+                const wStart = profile.workStartTime || '09:00';
+                const wEnd = profile.workEndTime || '18:00';
+                const offDayStr = dayNames[parseInt(profile.weeklyDayOff || 0)];
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">${(profile.name || '?').charAt(0)}</div><div><h4 class="font-bold text-sm text-gray-900">${profile.name}</h4><p class="text-[10px] font-bold text-gray-400">รหัส: ${profile.empId} • ฿${profile.dailyRate || 0}/วัน • หยุด: ${offDayStr}</p><p class="text-[10px] text-blue-500 mt-0.5">เวลาทำงาน: ${wStart} - ${wEnd}</p></div></div><div class="flex gap-1"><button onclick="openEditEmployeeModal('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteProfile('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><i data-lucide="user-minus" class="w-4 h-4"></i></button></div></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
 
-        // --- Custom UI Utilities ---
+        function renderAdminHolidays() {
+            const container = document.getElementById('admin-holidays-list');
+            if (allHolidays.length === 0) { container.innerHTML = `<p class="text-center text-gray-400 py-10 text-sm">ยังไม่มีวันหยุดบริษัท</p>`; return; }
+            let html = '';
+            const now = new Date().getTime();
+            allHolidays.forEach(h => {
+                const dObj = new Date(h.date);
+                const dStr = dObj.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+                const isPast = dObj.setHours(23,59,59,999) < now;
+                const opacity = isPast ? 'opacity-60' : '';
+                html += `<div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${opacity}">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-pink-50 text-pink-500 rounded-xl flex items-center justify-center font-bold"><i data-lucide="calendar" class="w-5 h-5"></i></div>
+                        <div><h4 class="font-bold text-sm text-gray-900">${h.name}</h4><p class="text-[11px] font-bold text-gray-500">${dStr}</p></div>
+                    </div>
+                    <button onclick="deleteHoliday('${h.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>`;
+            });
+            container.innerHTML = html; lucide.createIcons();
+        }
+
+        function renderAdminPayroll() {
+            let weekEnd = new Date(payrollWeekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6); weekEnd.setHours(23, 59, 59, 999);
+            const dStart = payrollWeekStart.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+            const dEnd = weekEnd.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+            document.getElementById('payroll-week-display').textContent = `${dStart} - ${dEnd}`;
+
+            const container = document.getElementById('payroll-list');
+            if (allProfiles.length === 0) { container.innerHTML = `<p class="text-center text-gray-400 py-10 text-sm">ไม่มีข้อมูลพนักงาน</p>`; return; }
+            
+            let html = ''; let totalCompanyPay = 0;
+            allProfiles.forEach(profile => {
+                const empLogsIn = allLogs.filter(l => l.empId === profile.empId && l.type === 'in' && l.timestamp >= payrollWeekStart.getTime() && l.timestamp <= weekEnd.getTime());
+                const empLogsOut = allLogs.filter(l => l.empId === profile.empId && l.type === 'out' && l.timestamp >= payrollWeekStart.getTime() && l.timestamp <= weekEnd.getTime());
+                
+                let workedDaysCount = 0;
+                let holidayCount = 0;
+                let weeklyOffCount = 0;
+                let paidDaysCount = 0;
+
+                // คำนวณรายวันในรอบ 7 วัน เพื่อเช็คว่าวันไหนมาทำงาน, วันหยุดบริษัท หรือ วันหยุดสัปดาห์
+                for (let d = 0; d < 7; d++) {
+                    let loopDate = new Date(payrollWeekStart);
+                    loopDate.setDate(loopDate.getDate() + d);
+                    loopDate.setHours(0,0,0,0);
+                    let loopTime = loopDate.getTime();
+
+                    let isWorked = empLogsIn.some(l => new Date(l.timestamp).setHours(0,0,0,0) === loopTime);
+                    let isHoliday = allHolidays.some(h => new Date(h.date).setHours(0,0,0,0) === loopTime);
+                    let isWeeklyOff = loopDate.getDay() === parseInt(profile.weeklyDayOff || 0);
+
+                    // หากมาทำงาน ได้ค่าแรง (นับรวม)
+                    if (isWorked) {
+                        workedDaysCount++;
+                        paidDaysCount++;
+                    } 
+                    // หากไม่ได้มาทำ แต่เป็นวันหยุดพิเศษ (ได้ค่าแรง)
+                    else if (isHoliday) {
+                        holidayCount++;
+                        paidDaysCount++;
+                    } 
+                    // หากไม่ได้มาทำ แต่เป็นวันหยุดประจำสัปดาห์ (ได้ค่าแรง)
+                    else if (isWeeklyOff) {
+                        weeklyOffCount++;
+                        paidDaysCount++;
+                    }
+                }
+
+                const dailyRate = profile.dailyRate || 0;
+                const totalRegularPay = paidDaysCount * dailyRate;
+                
+                const totalOtPay = empLogsOut.reduce((sum, log) => sum + (log.otPay || 0), 0);
+                const totalOtHours = empLogsOut.reduce((sum, log) => sum + (log.otHours || 0), 0);
+                const totalPay = totalRegularPay + totalOtPay;
+                totalCompanyPay += totalPay;
+
+                let dayText = `ทำงาน ${workedDaysCount} วัน`;
+                if(weeklyOffCount > 0) dayText += ` + หยุด ${weeklyOffCount} วัน`;
+                if(holidayCount > 0) dayText += ` + นักขัต ${holidayCount} วัน`;
+
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden"><div class="flex justify-between items-center mb-1"><h4 class="font-bold text-sm text-gray-900">${profile.name} <span class="text-xs text-gray-400 font-normal">(${profile.empId})</span></h4><span class="font-bold text-green-600">฿${totalPay.toLocaleString()}</span></div><div class="flex justify-between items-center text-[10px] text-gray-500 mb-2"><p>ค่าแรง: ฿${dailyRate}/วัน • OT: ฿${profile.otRate || 0}/ชม.</p></div><div class="flex flex-wrap gap-2"><span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold text-[10px]">${dayText} (฿${totalRegularPay.toLocaleString()})</span>${totalOtHours > 0 ? `<span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold text-[10px]">OT ${totalOtHours.toFixed(1)} ชม. (฿${totalOtPay.toLocaleString()})</span>` : ''}</div></div>`;
+            });
+            html = `<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-2 flex justify-between items-center"><span class="text-sm font-bold text-green-800">ยอดรวมจ่ายสัปดาห์นี้:</span><span class="text-lg font-bold text-green-600">฿${totalCompanyPay.toLocaleString()}</span></div>` + html;
+            container.innerHTML = html; lucide.createIcons();
+        }
+
+        function renderAdminStatsDashboard() {
+            const container = document.getElementById('admin-content-stats');
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+            const monthLogs = allLogs.filter(l => l.timestamp >= startOfMonth);
+            const monthLeaves = allLeaves.filter(l => l.timestamp >= startOfMonth && l.status === 'approved');
+
+            const totalLate = monthLogs.filter(l => l.type === 'in' && l.isLate).length;
+            const totalOT = monthLogs.reduce((sum, l) => sum + (l.otHours || 0), 0);
+            
+            // ใช้ calculateLeaveDays เพื่อรวมจำนวนวันลาจริงๆ ในเดือนนี้
+            const totalLeaveDays = monthLeaves.reduce((sum, l) => sum + calculateLeaveDays(l.startDate, l.endDate), 0);
+
+            let html = `
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-2">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-500"></i>
+                        ภาพรวมเดือน ${now.toLocaleDateString('th-TH', {month:'long', year:'numeric'})}
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[11px] text-red-500 font-bold mb-1">เข้าสาย (ครั้ง)</p>
+                            <h4 class="text-3xl font-black text-red-700">${totalLate}</h4>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-xl border border-purple-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[11px] text-purple-500 font-bold mb-1">ชั่วโมง OT รวม</p>
+                            <h4 class="text-3xl font-black text-purple-700">${totalOT.toFixed(1)}</h4>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[11px] text-orange-500 font-bold mb-1">วันลางาน (วัน)</p>
+                            <h4 class="text-3xl font-black text-orange-700">${totalLeaveDays}</h4>
+                        </div>
+                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[11px] text-blue-500 font-bold mb-1">รายการตอกบัตร</p>
+                            <h4 class="text-3xl font-black text-blue-700">${monthLogs.length}</h4>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="exportLogsToCSV()" class="w-full bg-[#107c41] hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                    <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                    ดาวน์โหลดรายงาน Excel (CSV)
+                </button>
+            `;
+            container.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // --- UI Interactions ---
+        window.changePayrollWeek = (offset) => { payrollWeekStart.setDate(payrollWeekStart.getDate() + (offset * 7)); renderAdminPayroll(); };
+
         window.showConfirm = (title, message, onConfirm, okClass = 'bg-blue-600') => {
             const m = document.getElementById('modal-confirm'), c = document.getElementById('modal-confirm-content');
-            document.getElementById('confirm-title').textContent = title;
-            document.getElementById('confirm-message').textContent = message;
-            
-            const btnOk = document.getElementById('btn-confirm-ok');
-            btnOk.className = `flex-1 py-3 text-white font-bold rounded-xl active:scale-95 transition-all ${okClass}`;
-            
-            m.classList.remove('hidden'); m.classList.add('flex');
-            requestAnimationFrame(() => { m.classList.remove('opacity-0'); c.classList.remove('scale-95'); });
-            
+            document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-message').textContent = message;
+            const btnOk = document.getElementById('btn-confirm-ok'); btnOk.className = `flex-1 py-3 text-white font-bold rounded-xl active:scale-95 transition-all ${okClass}`;
+            m.classList.remove('hidden'); m.classList.add('flex'); requestAnimationFrame(() => { m.classList.remove('opacity-0'); c.classList.remove('scale-95'); });
             const closeConfirm = () => { m.classList.add('opacity-0'); c.classList.add('scale-95'); setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300); };
             document.getElementById('btn-confirm-cancel').onclick = closeConfirm; btnOk.onclick = () => { closeConfirm(); onConfirm(); };
         };
@@ -585,17 +1060,17 @@
         }
 
         window.switchAdminTab = (tab) => {
-            ['logs', 'leaves', 'users'].forEach(t => {
+            ['logs', 'leaves', 'holidays', 'payroll', 'users', 'stats'].forEach(t => {
                 const elTab = document.getElementById('tab-' + t), elContent = document.getElementById('admin-content-' + t);
-                if(t === tab) { elTab.classList.add('border-blue-600', 'text-blue-600'); elTab.classList.remove('border-transparent', 'text-gray-500'); elContent.classList.remove('hidden'); elContent.classList.add(t==='users'?'flex':'block'); } 
-                else { elTab.classList.remove('border-blue-600', 'text-blue-600'); elTab.classList.add('border-transparent', 'text-gray-500'); elContent.classList.add('hidden'); elContent.classList.remove(t==='users'?'flex':'block'); }
+                if(t === tab) { elTab.classList.add('border-blue-600', 'text-blue-600'); elTab.classList.remove('border-transparent', 'text-gray-500'); elContent.classList.remove('hidden'); elContent.classList.add((t==='users' || t==='payroll' || t==='stats' || t==='holidays')?'flex':'block'); } 
+                else { elTab.classList.remove('border-blue-600', 'text-blue-600'); elTab.classList.add('border-transparent', 'text-gray-500'); elContent.classList.add('hidden'); elContent.classList.remove((t==='users' || t==='payroll' || t==='stats' || t==='holidays')?'flex':'block'); }
             });
         }
 
         // Admin Modal logic
         window.openAdminModal = () => { const m = document.getElementById('modal-admin-pin'), c = document.getElementById('modal-admin-content'); m.classList.remove('hidden'); m.classList.add('flex'); document.getElementById('input-admin-pin').value = ''; requestAnimationFrame(() => { m.classList.remove('opacity-0'); c.classList.remove('scale-95'); }); setTimeout(() => document.getElementById('input-admin-pin').focus(), 100); };
         window.closeAdminModal = () => { const m = document.getElementById('modal-admin-pin'), c = document.getElementById('modal-admin-content'); m.classList.add('opacity-0'); c.classList.add('scale-95'); setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300); };
-        window.verifyAdmin = () => { if(document.getElementById('input-admin-pin').value === ADMIN_PIN) { closeAdminModal(); window.switchScreen('screen-admin'); renderAdminLogs(); renderAdminLeaves(); renderAdminUsers(); } else { window.showToast("รหัส PIN ไม่ถูกต้อง", "error"); document.getElementById('input-admin-pin').value = ''; } };
+        window.verifyAdmin = () => { if(document.getElementById('input-admin-pin').value === ADMIN_PIN) { closeAdminModal(); window.switchScreen('screen-admin'); renderAdminLogs(); renderAdminLeaves(); renderAdminHolidays(); renderAdminUsers(); renderAdminPayroll(); renderAdminStatsDashboard(); } else { window.showToast("รหัส PIN ไม่ถูกต้อง", "error"); document.getElementById('input-admin-pin').value = ''; } };
         window.exitAdminMode = () => window.switchScreen(userProfile ? 'screen-dashboard' : 'screen-setup');
 
         setInterval(() => { const now = new Date(); const elTime = document.getElementById('live-time'), elDate = document.getElementById('live-date'); if(elTime) elTime.textContent = now.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }); if(elDate) elDate.textContent = now.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }, 1000);
