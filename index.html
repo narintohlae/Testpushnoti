@@ -2,7 +2,8 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- เพิ่ม user-scalable=0 เพื่อควบคุมการซูมเบื้องต้น -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Time & Leave Tracker - ระบบบันทึกเวลาและลางาน</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,11 +19,27 @@
         .fade-enter { opacity: 0; transform: translateY(10px); transition: all 0.4s ease-out; }
         .fade-enter-active { opacity: 1; transform: translateY(0); }
         .modal-bg { background-color: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); }
+        
+        /* 1. แก้ปัญหา iOS Zoom In อัตโนมัติ บังคับให้ Input ทั้งหมดเป็น 16px */
+        input, select, textarea {
+            font-size: 16px !important; 
+            box-sizing: border-box !important;
+            max-width: 100%;
+        }
+
+        /* 2. แก้ปัญหา Input Date/Time ตกขอบบนมือถือ Safari */
+        input[type="date"], input[type="time"] {
+            -webkit-appearance: none;
+            appearance: none;
+            min-width: 0; 
+            width: 100%;
+        }
     </style>
 </head>
-<body class="text-gray-800 antialiased h-screen w-full flex justify-center items-center overflow-hidden">
+<!-- เปลี่ยน h-screen เป็น h-[100dvh] เพื่อแก้ปัญหาหน้าจอเลื่อนขึ้นลงเวลามี Address bar ของมือถือ -->
+<body class="text-gray-800 antialiased h-[100dvh] w-full flex justify-center items-center overflow-hidden">
 
-    <div class="w-full h-full max-w-[480px] bg-white shadow-2xl relative flex flex-col sm:h-[95vh] sm:rounded-[2.5rem] sm:border-8 sm:border-gray-900 overflow-hidden">
+    <div class="w-full h-full max-w-[480px] bg-white shadow-2xl relative flex flex-col sm:h-[95dvh] sm:rounded-[2.5rem] sm:border-8 sm:border-gray-900 overflow-hidden">
         
         <div id="toast-container" class="absolute top-4 left-0 w-full px-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
 
@@ -32,30 +49,43 @@
             <p class="text-gray-500 text-sm font-medium">กำลังเชื่อมต่อระบบ...</p>
         </div>
 
-        <!-- 2. Setup/Login Screen -->
-        <div id="screen-setup" class="absolute inset-0 bg-white z-30 hidden flex-col p-8 transition-opacity duration-300 overflow-y-auto">
+        <!-- 2. Setup/Login Screen (NUMPAD) -->
+        <div id="screen-setup" class="absolute inset-0 bg-white z-30 hidden flex-col p-6 transition-opacity duration-300 overflow-y-auto">
             <div class="absolute top-6 right-6 cursor-pointer text-gray-300 hover:text-gray-600 transition-colors" onclick="openAdminModal()">
                 <i data-lucide="settings" class="w-6 h-6"></i>
             </div>
             
-            <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full mt-8">
-                <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                    <i data-lucide="badge-check" class="w-8 h-8 text-blue-600"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">เข้าสู่ระบบ</h1>
-                <p class="text-gray-500 text-sm mb-8">กรุณากรอกรหัสพนักงานที่ระบบออกให้เพื่อเข้าใช้งาน</p>
-                
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">รหัสพนักงาน (Employee ID)</label>
-                        <input type="text" id="input-emp-id" placeholder="เช่น E001" 
-                            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-base uppercase">
+            <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full mt-4">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="key-round" class="w-8 h-8 text-blue-600"></i>
                     </div>
-                    <button id="btn-login" onclick="loginWithEmpId()" 
-                        class="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex justify-center items-center gap-2">
-                        <span>ตรวจสอบรหัส</span>
-                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                    </button>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-1">เข้าสู่ระบบ</h1>
+                    <p class="text-gray-500 text-sm">กดรหัสพนักงานของคุณ</p>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="relative">
+                        <input type="text" id="input-emp-id-display" readonly placeholder="----" 
+                            class="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none transition-all text-center text-3xl font-bold tracking-[0.3em] text-gray-800 h-16">
+                    </div>
+
+                    <div id="numpad-container" class="grid grid-cols-3 gap-3 max-w-[280px] mx-auto">
+                        <button onclick="handleNumpad('1')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">1</button>
+                        <button onclick="handleNumpad('2')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">2</button>
+                        <button onclick="handleNumpad('3')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">3</button>
+                        <button onclick="handleNumpad('4')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">4</button>
+                        <button onclick="handleNumpad('5')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">5</button>
+                        <button onclick="handleNumpad('6')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">6</button>
+                        <button onclick="handleNumpad('7')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">7</button>
+                        <button onclick="handleNumpad('8')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">8</button>
+                        <button onclick="handleNumpad('9')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">9</button>
+                        <button onclick="handleNumpad('C')" class="h-16 bg-red-50 border border-red-100 rounded-xl text-xl font-bold text-red-500 shadow-sm active:bg-red-100 active:scale-95 transition-all">C</button>
+                        <button onclick="handleNumpad('0')" class="h-16 bg-white border border-gray-200 rounded-xl text-2xl font-bold text-gray-700 shadow-sm active:bg-gray-100 active:scale-95 transition-all">0</button>
+                        <button onclick="handleNumpad('DEL')" class="h-16 bg-gray-100 border border-gray-200 rounded-xl flex justify-center items-center text-gray-600 shadow-sm active:bg-gray-200 active:scale-95 transition-all">
+                            <i data-lucide="delete" class="w-7 h-7"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -63,80 +93,80 @@
         <!-- 3. Main Dashboard Screen -->
         <div id="screen-dashboard" class="absolute inset-0 bg-gray-50 hidden flex-col z-20 transition-opacity duration-300">
             <!-- Header -->
-            <div class="bg-white px-6 pt-8 pb-6 rounded-b-3xl shadow-sm z-10 relative">
+            <div class="bg-white px-5 pt-8 pb-6 rounded-b-3xl shadow-sm z-10 relative">
                 <div class="flex justify-between items-center mb-6">
-                    <div>
-                        <p class="text-xs text-gray-400 font-medium tracking-wide uppercase mb-1">ยินดีต้อนรับกลับมา</p>
-                        <h2 id="display-name" class="text-lg font-bold text-gray-900 truncate max-w-[150px]">กำลังโหลด...</h2>
+                    <div class="min-w-0 flex-1 pr-4">
+                        <p class="text-[10px] sm:text-xs text-gray-400 font-medium tracking-wide uppercase mb-1">ยินดีต้อนรับกลับมา</p>
+                        <h2 id="display-name" class="text-base sm:text-lg font-bold text-gray-900 truncate">กำลังโหลด...</h2>
                         <p class="text-xs font-bold text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded-md mt-1" id="display-emp-id">---</p>
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-100 transition" onclick="switchScreen('screen-leaves')">
-                            <i data-lucide="calendar-clock" class="w-5 h-5 text-orange-600"></i>
+                    <div class="flex gap-2 flex-shrink-0">
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-orange-50 rounded-full flex items-center justify-center cursor-pointer hover:bg-orange-100 transition" onclick="switchScreen('screen-leaves')">
+                            <i data-lucide="calendar-clock" class="w-4 h-4 sm:w-5 sm:h-5 text-orange-600"></i>
                         </div>
-                        <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-100 transition" onclick="logoutEmployee()">
-                            <i data-lucide="log-out" class="w-5 h-5 text-red-500"></i>
+                        <div class="w-9 h-9 sm:w-10 sm:h-10 bg-red-50 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-100 transition" onclick="logoutEmployee()">
+                            <i data-lucide="log-out" class="w-4 h-4 sm:w-5 sm:h-5 text-red-500"></i>
                         </div>
                     </div>
                 </div>
 
                 <!-- Digital Clock -->
-                <div class="text-center mt-4">
-                    <div class="inline-flex items-center justify-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium mb-3">
+                <div class="text-center mt-2">
+                    <div class="inline-flex items-center justify-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium mb-2">
                         <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse-dot"></span>
                         เวลาปัจจุบัน
                     </div>
-                    <h1 id="live-time" class="text-5xl font-light text-gray-900 tracking-tight tabular-nums">00:00</h1>
-                    <p id="live-date" class="text-sm text-gray-500 mt-2 font-medium">--</p>
+                    <h1 id="live-time" class="text-4xl sm:text-5xl font-light text-gray-900 tracking-tight tabular-nums">00:00</h1>
+                    <p id="live-date" class="text-[11px] sm:text-sm text-gray-500 mt-1 font-medium">--</p>
                 </div>
             </div>
 
             <!-- Action Area -->
-            <div class="flex-1 flex flex-col justify-center items-center p-6 relative">
+            <div class="flex-1 flex flex-col justify-center items-center p-4 relative">
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
-                    <div class="w-64 h-64 border border-gray-200 rounded-full opacity-50"></div>
-                    <div class="w-80 h-80 border border-gray-200 rounded-full absolute opacity-30"></div>
+                    <div class="w-56 h-56 sm:w-64 sm:h-64 border border-gray-200 rounded-full opacity-50"></div>
+                    <div class="w-72 h-72 sm:w-80 sm:h-80 border border-gray-200 rounded-full absolute opacity-30"></div>
                 </div>
 
                 <!-- แสดงเวลาทำงานของพนักงาน -->
-                <div id="user-schedule-display" class="relative z-10 bg-white px-4 py-1.5 rounded-full shadow-sm border border-gray-100 text-xs font-bold text-gray-500 mb-4 hidden">
+                <div id="user-schedule-display" class="relative z-10 bg-white px-4 py-1.5 rounded-full shadow-sm border border-gray-100 text-[10px] sm:text-xs font-bold text-gray-500 mb-4 hidden text-center">
                     เวลาทำงาน: <span id="schedule-time" class="text-blue-600">--:-- - --:--</span>
                 </div>
 
-                <button id="btn-action" disabled class="relative z-10 w-44 h-44 rounded-full flex flex-col items-center justify-center gap-3 text-white shadow-2xl transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-300">
-                    <i id="action-icon" data-lucide="fingerprint" class="w-12 h-12"></i>
-                    <span id="action-text" class="text-xl font-bold tracking-wide">กำลังโหลด</span>
-                    <span id="action-subtext" class="text-xs opacity-80">กรุณารอสักครู่</span>
+                <button id="btn-action" disabled class="relative z-10 w-36 h-36 sm:w-44 sm:h-44 rounded-full flex flex-col items-center justify-center gap-2 sm:gap-3 text-white shadow-2xl transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-300">
+                    <i id="action-icon" data-lucide="fingerprint" class="w-10 h-10 sm:w-12 sm:h-12"></i>
+                    <span id="action-text" class="text-lg sm:text-xl font-bold tracking-wide">กำลังโหลด</span>
+                    <span id="action-subtext" class="text-[10px] sm:text-xs opacity-80">กรุณารอสักครู่</span>
                 </button>
             </div>
 
             <!-- Recent Logs -->
-            <div class="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] h-[35vh] flex flex-col z-10">
+            <div class="bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)] h-[30vh] sm:h-[35vh] flex flex-col z-10">
                 <div class="flex justify-center pt-3 pb-2">
                     <div class="w-12 h-1.5 bg-gray-200 rounded-full"></div>
                 </div>
-                <div class="px-6 pb-2 flex justify-between items-end">
+                <div class="px-5 pb-2 flex justify-between items-end">
                     <h3 class="text-sm font-bold text-gray-800">ประวัติเข้า-ออกงาน</h3>
                     <span class="text-xs text-gray-500">วันนี้</span>
                 </div>
-                <div class="flex-1 overflow-y-auto px-6 pb-6 pt-2" id="logs-container"></div>
+                <div class="flex-1 overflow-y-auto px-5 pb-6 pt-2" id="logs-container"></div>
             </div>
         </div>
 
         <!-- 4. User Leaves Screen -->
         <div id="screen-leaves" class="absolute inset-0 bg-gray-50 hidden flex-col z-30 transition-opacity duration-300">
             <div class="bg-white px-4 pt-6 pb-4 shadow-sm z-20 flex items-center justify-between">
-                <button onclick="switchScreen('screen-dashboard')" class="p-2 rounded-full hover:bg-gray-100 transition">
+                <button onclick="switchScreen('screen-dashboard')" class="p-2 rounded-full hover:bg-gray-100 transition flex-shrink-0">
                     <i data-lucide="arrow-left" class="w-6 h-6 text-gray-700"></i>
                 </button>
-                <h2 class="text-lg font-bold text-gray-900">จัดการวันลา</h2>
-                <div class="w-10"></div>
+                <h2 class="text-lg font-bold text-gray-900 flex-1 text-center">จัดการวันลา</h2>
+                <div class="w-10 flex-shrink-0"></div>
             </div>
             <div class="flex-1 overflow-y-auto p-4 relative">
                 <div id="user-upcoming-holidays"></div>
                 <div id="user-leaves-container" class="space-y-3 mt-2"></div>
             </div>
-            <button onclick="switchScreen('screen-leave-form'); toggleLeaveType();" class="absolute bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-xl shadow-orange-200 flex items-center justify-center active:scale-95 transition-all">
+            <button onclick="switchScreen('screen-leave-form'); toggleLeaveType();" class="absolute bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-xl shadow-orange-200 flex items-center justify-center active:scale-95 transition-all z-20">
                 <i data-lucide="plus" class="w-6 h-6"></i>
             </button>
         </div>
@@ -144,16 +174,17 @@
         <!-- 5. Leave Request Form Screen -->
         <div id="screen-leave-form" class="absolute inset-0 bg-white hidden flex-col z-40 transition-opacity duration-300">
             <div class="px-4 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
-                <button onclick="switchScreen('screen-leaves')" class="p-2 rounded-full hover:bg-gray-100 transition">
+                <button onclick="switchScreen('screen-leaves')" class="p-2 rounded-full hover:bg-gray-100 transition flex-shrink-0">
                     <i data-lucide="arrow-left" class="w-6 h-6 text-gray-700"></i>
                 </button>
-                <h2 class="text-lg font-bold text-gray-900">ยื่นคำร้อง</h2>
-                <div class="w-10"></div>
+                <h2 class="text-lg font-bold text-gray-900 flex-1 text-center">ยื่นคำร้อง</h2>
+                <div class="w-10 flex-shrink-0"></div>
             </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-5">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">ประเภทรายการ</label>
-                    <select id="leave-type" onchange="toggleLeaveType()" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                <div class="w-full min-w-0">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">ประเภทรายการ</label>
+                    <!-- ปรับเป็น text-base เพื่อแก้ปัญหา Zoom บนมือถือ -->
+                    <select id="leave-type" onchange="toggleLeaveType()" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 font-medium text-base">
                         <option value="sick">ลาป่วย (Sick Leave)</option>
                         <option value="personal">ลากิจ (Personal Leave)</option>
                         <option value="vacation">ลาพักร้อน (Vacation)</option>
@@ -162,40 +193,40 @@
                 </div>
                 
                 <!-- ฟอร์มสำหรับ ลาปกติ -->
-                <div id="normal-date-container" class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[13px] font-bold text-gray-700 mb-1">วันที่เริ่มต้น</label>
-                        <input type="date" id="leave-start" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">
+                <div id="normal-date-container" class="grid grid-cols-2 gap-3">
+                    <div class="min-w-0">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">วันที่เริ่มต้น</label>
+                        <input type="date" id="leave-start" class="w-full px-2 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-base">
                     </div>
-                    <div>
-                        <label class="block text-[13px] font-bold text-gray-700 mb-1">ถึงวันที่</label>
-                        <input type="date" id="leave-end" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">
+                    <div class="min-w-0">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">ถึงวันที่</label>
+                        <input type="date" id="leave-end" class="w-full px-2 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-base">
                     </div>
                 </div>
                 
-                <!-- ฟอร์มสำหรับ สลับวันหยุด (โชว์เฉพาะตอนเลือกสลับวันหยุด) -->
-                <div id="swap-date-container" class="hidden bg-blue-50 p-5 rounded-2xl border border-blue-200">
+                <!-- ฟอร์มสำหรับ สลับวันหยุด -->
+                <div id="swap-date-container" class="hidden bg-blue-50 p-4 rounded-2xl border border-blue-200 w-full overflow-hidden">
                     <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                        <div class="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
                             <i data-lucide="arrow-right-left" class="w-4 h-4"></i>
                         </div>
                         <h3 class="font-bold text-blue-800 text-sm">ข้อมูลสลับวันหยุด</h3>
                     </div>
                     
-                    <div class="bg-white p-3 rounded-xl border border-blue-100 text-[13px] text-gray-700 mb-4 shadow-sm text-center">
-                        วันหยุดประจำสัปดาห์ของคุณคือ: <span id="swap-default-day" class="font-bold text-blue-600 text-base ml-1">--</span>
+                    <div class="bg-white p-3 rounded-xl border border-blue-100 text-xs text-gray-700 mb-4 shadow-sm text-center">
+                        วันหยุดประจำสัปดาห์ของคุณคือ: <span id="swap-default-day" class="font-bold text-blue-600 text-sm ml-1">--</span>
                     </div>
 
-                    <div>
-                        <label class="block text-[12px] font-bold text-blue-700 mb-1">วันที่ต้องการสลับ (วันที่จะหยุด)</label>
-                        <input type="date" id="leave-start-swap" class="w-full px-3 py-3 bg-white border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm shadow-sm">
+                    <div class="w-full min-w-0">
+                        <label class="block text-xs font-bold text-blue-700 mb-1">วันที่ต้องการสลับ (วันที่จะหยุดแทน)</label>
+                        <input type="date" id="leave-start-swap" class="w-full px-3 py-3 bg-white border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-base shadow-sm">
                         <p class="text-[10px] text-blue-500 mt-2 text-center">* ระบบจะนำวันหยุดประจำสัปดาห์มาทำแทนอัตโนมัติ</p>
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">เหตุผล</label>
-                    <textarea id="leave-reason" rows="3" placeholder="ระบุเหตุผล (เช่น สลับวันหยุดเพื่อไปทำธุระ)" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"></textarea>
+                <div class="w-full min-w-0">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">เหตุผล</label>
+                    <textarea id="leave-reason" rows="3" placeholder="ระบุเหตุผล (เช่น สลับวันหยุดเพื่อไปทำธุระ)" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 text-base"></textarea>
                 </div>
             </div>
             <div class="p-4 bg-white border-t border-gray-100">
@@ -205,48 +236,46 @@
 
         <!-- 6. Admin Dashboard Screen -->
         <div id="screen-admin" class="absolute inset-0 bg-gray-50 hidden flex-col z-40 transition-opacity duration-300">
-            <div class="bg-gray-900 text-white px-6 pt-8 pb-6 shadow-md z-20">
-                <div class="flex justify-between items-center mb-6">
+            <div class="bg-gray-900 text-white px-5 pt-8 pb-5 shadow-md z-20">
+                <div class="flex justify-between items-center mb-5">
                     <div class="flex items-center gap-3">
                         <button onclick="exitAdminMode()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-700 transition">
                             <i data-lucide="arrow-left" class="w-4 h-4 text-gray-300"></i>
                         </button>
-                        <h1 class="text-xl font-bold">Admin Panel</h1>
+                        <h1 class="text-lg font-bold">Admin Panel</h1>
                     </div>
-                    <div class="px-3 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-full border border-red-500/30">ผู้ดูแลระบบ</div>
+                    <div class="px-3 py-1 bg-red-500/20 text-red-400 text-[10px] font-bold rounded-full border border-red-500/30">ผู้ดูแลระบบ</div>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700">
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 text-center">
                         <p class="text-gray-400 text-[10px] mb-1">พนักงาน</p>
-                        <h3 class="text-xl font-bold" id="admin-stat-users">0</h3>
+                        <h3 class="text-lg font-bold" id="admin-stat-users">0</h3>
                     </div>
-                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700">
-                        <p class="text-gray-400 text-[10px] mb-1">ลงเวลาวันนี้</p>
-                        <h3 class="text-xl font-bold text-green-400" id="admin-stat-logs">0</h3>
+                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 text-center">
+                        <p class="text-gray-400 text-[10px] mb-1">ตอกบัตรวันนี้</p>
+                        <h3 class="text-lg font-bold text-green-400" id="admin-stat-logs">0</h3>
                     </div>
-                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 relative">
-                        <p class="text-gray-400 text-[10px] mb-1">รออนุมัติลา</p>
-                        <h3 class="text-xl font-bold text-orange-400" id="admin-stat-leaves">0</h3>
+                    <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 relative text-center">
+                        <p class="text-gray-400 text-[10px] mb-1">รออนุมัติ</p>
+                        <h3 class="text-lg font-bold text-orange-400" id="admin-stat-leaves">0</h3>
                     </div>
                 </div>
             </div>
 
             <!-- Scrollable Tabs -->
-            <div class="flex bg-white border-b border-gray-200 z-10 shadow-sm overflow-x-auto hide-scrollbar whitespace-nowrap px-2">
-                <button onclick="switchAdminTab('logs')" id="tab-logs" class="px-5 py-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors">เข้า-ออก</button>
-                <button onclick="switchAdminTab('leaves')" id="tab-leaves" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">คำร้อง</button>
-                <button onclick="switchAdminTab('holidays')" id="tab-holidays" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">วันหยุด</button>
-                <button onclick="switchAdminTab('payroll')" id="tab-payroll" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">เงินเดือน</button>
-                <button onclick="switchAdminTab('users')" id="tab-users" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">พนักงาน</button>
-                <button onclick="switchAdminTab('stats')" id="tab-stats" class="px-5 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 transition-colors">สถิติ</button>
+            <div class="flex bg-white border-b border-gray-200 z-10 shadow-sm overflow-x-auto hide-scrollbar whitespace-nowrap flex-nowrap px-1">
+                <button onclick="switchAdminTab('logs')" id="tab-logs" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-blue-600 text-blue-600 transition-colors">เข้า-ออก</button>
+                <button onclick="switchAdminTab('leaves')" id="tab-leaves" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-transparent text-gray-500 transition-colors">คำร้อง</button>
+                <button onclick="switchAdminTab('holidays')" id="tab-holidays" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-transparent text-gray-500 transition-colors">วันหยุด</button>
+                <button onclick="switchAdminTab('payroll')" id="tab-payroll" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-transparent text-gray-500 transition-colors">เงินเดือน</button>
+                <button onclick="switchAdminTab('users')" id="tab-users" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-transparent text-gray-500 transition-colors">พนักงาน</button>
+                <button onclick="switchAdminTab('stats')" id="tab-stats" class="px-4 py-3 text-sm font-bold flex-shrink-0 border-b-2 border-transparent text-gray-500 transition-colors">สถิติ</button>
             </div>
 
             <div class="flex-1 overflow-y-auto p-4 relative bg-gray-50">
                 
                 <!-- Logs Tab -->
-                <div id="admin-content-logs" class="space-y-3">
-                    <!-- Logs list injected here -->
-                </div>
+                <div id="admin-content-logs" class="space-y-3"></div>
                 
                 <div id="admin-content-leaves" class="space-y-3 hidden"></div>
                 
@@ -255,8 +284,8 @@
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <h4 class="font-bold text-sm mb-3 text-gray-800 flex items-center gap-2"><i data-lucide="calendar-heart" class="w-4 h-4 text-pink-500"></i>เพิ่มวันหยุดบริษัท</h4>
                         <div class="flex gap-2 mb-3">
-                            <input type="date" id="admin-new-holiday-date" class="w-2/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                            <input type="text" id="admin-new-holiday-name" placeholder="ชื่อวันหยุด" class="w-3/5 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="date" id="admin-new-holiday-date" class="w-2/5 px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                            <input type="text" id="admin-new-holiday-name" placeholder="ชื่อวันหยุด" class="w-3/5 px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
                         <button onclick="adminAddHoliday()" class="w-full bg-pink-500 hover:bg-pink-600 text-white text-sm font-bold py-2.5 rounded-lg transition-colors">บันทึกวันหยุด</button>
                     </div>
@@ -266,74 +295,79 @@
                 <!-- Payroll Tab -->
                 <div id="admin-content-payroll" class="hidden flex-col gap-4">
                     <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center">
-                        <button onclick="changePayrollWeek(-1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition"><i data-lucide="chevron-left" class="w-5 h-5 text-gray-600"></i></button>
-                        <div class="text-center">
-                            <p class="text-[10px] text-gray-400 font-medium">รอบการจ่ายเงิน (รายสัปดาห์)</p>
-                            <span id="payroll-week-display" class="font-bold text-sm text-blue-600">--</span>
+                        <button onclick="changePayrollWeek(-1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition flex-shrink-0"><i data-lucide="chevron-left" class="w-5 h-5 text-gray-600"></i></button>
+                        <div class="text-center min-w-0 px-2">
+                            <p class="text-[10px] text-gray-400 font-medium truncate">รอบสัปดาห์</p>
+                            <span id="payroll-week-display" class="font-bold text-xs sm:text-sm text-blue-600 truncate block">--</span>
                         </div>
-                        <button onclick="changePayrollWeek(1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition"><i data-lucide="chevron-right" class="w-5 h-5 text-gray-600"></i></button>
+                        <button onclick="changePayrollWeek(1)" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition flex-shrink-0"><i data-lucide="chevron-right" class="w-5 h-5 text-gray-600"></i></button>
                     </div>
                     <div id="payroll-list" class="space-y-3"></div>
                 </div>
                 
                 <!-- Users Tab with Creation Form -->
+                <!-- ปรับเป็นกริด 2 ช่องเพื่อแก้ปัญหาการบีบอัดจนตกขอบ -->
                 <div id="admin-content-users" class="hidden flex-col gap-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                         <h4 class="font-bold text-sm mb-3 text-gray-800 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4 text-blue-600"></i>เพิ่มพนักงานใหม่</h4>
-                        <div class="flex gap-2 mb-2">
-                            <input type="text" id="admin-new-empid" placeholder="รหัส (เช่น E001)" class="w-1/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm uppercase">
-                            <input type="text" id="admin-new-empname" placeholder="ชื่อ-นามสกุล" class="w-2/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                        
+                        <div class="space-y-3">
+                            <div class="flex gap-2">
+                                <input type="text" id="admin-new-empid" placeholder="รหัส(1001)" class="w-1/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base uppercase min-w-0">
+                                <input type="text" id="admin-new-empname" placeholder="ชื่อ-นามสกุล" class="w-2/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base min-w-0">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเข้างาน</label>
+                                    <input type="time" id="admin-new-workstart" value="09:00" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเลิกงาน</label>
+                                    <input type="time" id="admin-new-workend" value="18:00" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">ค่าแรง(บ./วัน)</label>
+                                    <input type="number" id="admin-new-emprate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">OT(บ./ชม.)</label>
+                                    <input type="number" id="admin-new-empotrate" placeholder="ออโต้" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">วันลาต่อปี</label>
+                                    <input type="number" id="admin-new-leavequota" value="10" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                </div>
+                                <div class="min-w-0">
+                                    <label class="block text-[10px] text-gray-500 mb-1 ml-1">หยุดสัปดาห์ละ</label>
+                                    <select id="admin-new-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
+                                        <option value="0">อาทิตย์</option>
+                                        <option value="1">จันทร์</option>
+                                        <option value="2">อังคาร</option>
+                                        <option value="3">พุธ</option>
+                                        <option value="4">พฤหัสบดี</option>
+                                        <option value="5">ศุกร์</option>
+                                        <option value="6">เสาร์</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="flex gap-2 mb-2">
-                            <div class="w-1/2">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเข้างาน</label>
-                                <input type="time" id="admin-new-workstart" value="09:00" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                            </div>
-                            <div class="w-1/2">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">เวลาเลิกงาน</label>
-                                <input type="time" id="admin-new-workend" value="18:00" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mb-3">
-                            <div class="w-1/4">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">ค่าแรง(บ./วัน)</label>
-                                <input type="number" id="admin-new-emprate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
-                            </div>
-                            <div class="w-1/4">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">OT(บ./ชม.)</label>
-                                <input type="number" id="admin-new-empotrate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
-                            </div>
-                            <div class="w-1/4">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">วันลาต่อปี</label>
-                                <input type="number" id="admin-new-leavequota" value="10" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
-                            </div>
-                            <div class="w-1/4">
-                                <label class="block text-[10px] text-gray-500 mb-1 ml-1">หยุดสัปดาห์ละ</label>
-                                <select id="admin-new-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-[11px]">
-                                    <option value="0">อาทิตย์</option>
-                                    <option value="1">จันทร์</option>
-                                    <option value="2">อังคาร</option>
-                                    <option value="3">พุธ</option>
-                                    <option value="4">พฤหัสบดี</option>
-                                    <option value="5">ศุกร์</option>
-                                    <option value="6">เสาร์</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button onclick="adminCreateEmployee()" class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors">บันทึกข้อมูลพนักงาน</button>
+
+                        <button onclick="adminCreateEmployee()" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-3 rounded-lg transition-colors">บันทึกข้อมูลพนักงาน</button>
                     </div>
                     <div id="admin-users-list" class="space-y-3"></div>
                 </div>
 
                 <!-- Stats/Analytics Tab -->
-                <div id="admin-content-stats" class="hidden flex-col gap-4">
-                    <!-- Stats will be injected here -->
-                </div>
+                <div id="admin-content-stats" class="hidden flex-col gap-4"></div>
             </div>
         </div>
 
         <!-- System Modals -->
-        <div id="modal-admin-pin" class="absolute inset-0 z-50 hidden items-center justify-center modal-bg p-6 opacity-0 transition-opacity duration-300">
+        <div id="modal-admin-pin" class="absolute inset-0 z-50 hidden items-center justify-center modal-bg p-4 opacity-0 transition-opacity duration-300">
             <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-admin-content">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2"><i data-lucide="lock" class="w-5 h-5 text-gray-500"></i> ยืนยันตัวตน Admin</h3>
@@ -345,7 +379,7 @@
             </div>
         </div>
 
-        <div id="modal-confirm" class="absolute inset-0 z-[60] hidden items-center justify-center modal-bg p-6 opacity-0 transition-opacity duration-300">
+        <div id="modal-confirm" class="absolute inset-0 z-[60] hidden items-center justify-center modal-bg p-4 opacity-0 transition-opacity duration-300">
             <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-confirm-content">
                 <h3 class="text-lg font-bold text-gray-900 mb-2" id="confirm-title">ยืนยันการทำรายการ</h3>
                 <p class="text-sm text-gray-500 mb-6" id="confirm-message">คุณแน่ใจหรือไม่?</p>
@@ -358,48 +392,46 @@
 
         <!-- Edit Employee Modal -->
         <div id="modal-edit-employee" class="absolute inset-0 z-[55] hidden items-center justify-center modal-bg p-4 opacity-0 transition-opacity duration-300">
-            <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-edit-employee-content">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-5 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[90dvh] overflow-y-auto" id="modal-edit-employee-content">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5 text-blue-600"></i> แก้ไขข้อมูลพนักงาน</h3>
+                    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5 text-blue-600"></i> แก้ไขข้อมูลพนักงาน</h3>
                     <button onclick="closeEditEmployeeModal()" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
                 <div class="space-y-3 mb-5">
                     <div>
-                        <label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">รหัสพนักงาน (ไม่สามารถแก้ได้)</label>
-                        <input type="text" id="edit-emp-id" disabled class="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-sm text-gray-500 font-bold uppercase cursor-not-allowed">
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">รหัสพนักงาน</label>
+                        <input type="text" id="edit-emp-id" disabled class="w-full px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-base text-gray-500 font-bold uppercase cursor-not-allowed min-w-0">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">ชื่อ-นามสกุล</label>
-                        <input type="text" id="edit-emp-name" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <input type="text" id="edit-emp-name" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:outline-none min-w-0">
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-1/2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="min-w-0">
                             <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">เวลาเข้างาน</label>
-                            <input type="time" id="edit-emp-workstart" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="time" id="edit-emp-workstart" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
-                        <div class="w-1/2">
+                        <div class="min-w-0">
                             <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">เวลาเลิกงาน</label>
-                            <input type="time" id="edit-emp-workend" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="time" id="edit-emp-workend" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-1/2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">ค่าแรง(บ./วัน)</label>
-                            <input type="number" id="edit-emp-rate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="number" id="edit-emp-rate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
-                        <div class="w-1/2">
+                        <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">OT (บ./ชม.)</label>
-                            <input type="number" id="edit-emp-otrate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="number" id="edit-emp-otrate" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <div class="w-1/2">
+                        <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">โควตาลา(วัน)</label>
-                            <input type="number" id="edit-emp-leavequota" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="number" id="edit-emp-leavequota" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
-                        <div class="w-1/2">
+                        <div class="min-w-0">
                             <label class="block text-[10px] font-bold text-gray-700 mb-1 ml-1">วันหยุดประจำสัปดาห์</label>
-                            <select id="edit-emp-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <select id="edit-emp-weeklyoff" class="w-full px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-base">
                                 <option value="0">อาทิตย์</option>
                                 <option value="1">จันทร์</option>
                                 <option value="2">อังคาร</option>
@@ -411,44 +443,43 @@
                         </div>
                     </div>
                 </div>
-                <button id="btn-save-edit" onclick="saveEditEmployee()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">บันทึกการแก้ไข</button>
+                <button id="btn-save-edit" onclick="saveEditEmployee()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base">บันทึกการแก้ไข</button>
             </div>
         </div>
 
         <!-- Edit/Add Log Modal (Manual Entry) -->
         <div id="modal-edit-log" class="absolute inset-0 z-[55] hidden items-center justify-center modal-bg p-4 opacity-0 transition-opacity duration-300">
-            <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modal-edit-log-content">
+            <div class="bg-white rounded-3xl w-full max-w-sm p-5 sm:p-6 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[90dvh] overflow-y-auto" id="modal-edit-log-content">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2" id="modal-log-title"><i data-lucide="clock" class="w-5 h-5 text-blue-600"></i> จัดการเวลา</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2" id="modal-log-title"><i data-lucide="clock" class="w-5 h-5 text-blue-600"></i> จัดการเวลา</h3>
                     <button onclick="closeEditLogModal()" class="text-gray-400 hover:text-gray-700"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
-                <div class="space-y-3 mb-5">
+                <div class="space-y-4 mb-5">
                     <input type="hidden" id="edit-log-id">
-                    <div>
+                    <div class="w-full min-w-0">
                         <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">พนักงาน</label>
-                        <select id="edit-log-emp" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                            <!-- Options injected via JS -->
+                        <select id="edit-log-emp" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:outline-none">
                         </select>
                     </div>
-                    <div>
+                    <div class="w-full min-w-0">
                         <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">ประเภท</label>
-                        <select id="edit-log-type" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                        <select id="edit-log-type" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base focus:ring-2 focus:ring-blue-500 focus:outline-none">
                             <option value="in">เข้างาน</option>
                             <option value="out">ออกงาน</option>
                         </select>
                     </div>
-                    <div class="flex gap-2">
-                        <div class="w-1/2">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="min-w-0">
                             <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">วันที่</label>
-                            <input type="date" id="edit-log-date" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="date" id="edit-log-date" class="w-full px-2 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
-                        <div class="w-1/2">
+                        <div class="min-w-0">
                             <label class="block text-[11px] font-bold text-gray-700 mb-1 ml-1">เวลา</label>
-                            <input type="time" id="edit-log-time" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm">
+                            <input type="time" id="edit-log-time" class="w-full px-2 py-3 bg-gray-50 border border-gray-200 rounded-lg text-base">
                         </div>
                     </div>
                 </div>
-                <button id="btn-save-log" onclick="saveEditLog()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">บันทึกข้อมูล</button>
+                <button id="btn-save-log" onclick="saveEditLog()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base">บันทึกข้อมูล</button>
             </div>
         </div>
 
@@ -512,18 +543,34 @@
             } catch(e) {}
         }
 
-        window.loginWithEmpId = async () => {
-            if (!currentUser) return;
-            const inputEl = document.getElementById('input-emp-id');
-            const btnEl = document.getElementById('btn-login');
-            const empIdInput = inputEl.value.trim().toUpperCase();
-            
-            if (!empIdInput) return window.showToast("กรุณากรอกรหัสพนักงาน", "error");
-            
-            const profile = allProfiles.find(p => p.empId === empIdInput);
-            if (!profile) return window.showToast("ไม่พบรหัสพนักงานนี้ในระบบ", "error");
+        // --- ระบบล็อกอินด้วยปุ่มกด Numpad ---
+        window.handleNumpad = (val) => {
+            const inputEl = document.getElementById('input-emp-id-display');
+            if (val === 'C') {
+                inputEl.value = '';
+            } else if (val === 'DEL') {
+                inputEl.value = inputEl.value.slice(0, -1);
+            } else {
+                inputEl.value += val;
+            }
 
-            btnEl.disabled = true; btnEl.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i> ตรวจสอบ...'; lucide.createIcons();
+            const currentVal = inputEl.value.trim().toUpperCase();
+            if (currentVal.length > 0) {
+                const profile = allProfiles.find(p => p.empId === currentVal);
+                if (profile) {
+                    executeLogin(profile);
+                }
+            }
+        };
+
+        const executeLogin = async (profile) => {
+            if (!currentUser) return;
+            
+            const numpad = document.getElementById('numpad-container');
+            if(numpad) {
+                numpad.style.pointerEvents = 'none';
+                numpad.style.opacity = '0.5';
+            }
 
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'link'), { empId: profile.empId });
@@ -534,9 +581,16 @@
                 window.showToast("เข้าสู่ระบบสำเร็จ", "success");
                 updateUserDashboardState(); renderUserLogs(); renderUserLeaves(); window.toggleLeaveType();
                 window.switchScreen('screen-dashboard');
-                inputEl.value = '';
-            } catch(e) { window.showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error"); } 
-            finally { btnEl.disabled = false; btnEl.innerHTML = '<span>ตรวจสอบรหัส</span><i data-lucide="arrow-right" class="w-4 h-4"></i>'; lucide.createIcons(); }
+                document.getElementById('input-emp-id-display').value = '';
+            } catch(e) { 
+                window.showToast("เกิดข้อผิดพลาดในการเชื่อมต่อ", "error"); 
+            } finally { 
+                if(numpad) {
+                    numpad.style.pointerEvents = 'auto';
+                    numpad.style.opacity = '1';
+                }
+                lucide.createIcons(); 
+            }
         };
 
         window.logoutEmployee = () => {
@@ -545,6 +599,7 @@
                     await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'link'));
                     userProfile = null; savedEmpId = null;
                     window.switchScreen('screen-setup');
+                    document.getElementById('input-emp-id-display').value = '';
                     window.showToast("ออกจากระบบเรียบร้อย", "success");
                 } catch(e) { window.showToast("เกิดข้อผิดพลาด", "error"); }
             }, 'bg-red-600');
@@ -629,7 +684,7 @@
             const actionType = currentStatus === 'in' ? 'out' : 'in';
             const btnAction = document.getElementById('btn-action');
             btnAction.disabled = true; const originalHTML = btnAction.innerHTML;
-            btnAction.innerHTML = '<i data-lucide="loader-2" class="w-12 h-12 animate-spin"></i><span class="text-xl font-bold">กำลังบันทึก...</span>'; lucide.createIcons();
+            btnAction.innerHTML = '<i data-lucide="loader-2" class="w-10 h-10 sm:w-12 sm:h-12 animate-spin"></i><span class="text-lg sm:text-xl font-bold">บันทึก...</span>'; lucide.createIcons();
 
             let isLate = false; let otHours = 0; let otPay = 0;
 
@@ -1034,12 +1089,12 @@
             const btnAction = document.getElementById('btn-action');
             if (!latestLog || latestLog.type === 'out') {
                 currentStatus = 'out'; btnAction.disabled = false;
-                btnAction.className = "relative z-10 w-44 h-44 rounded-full flex flex-col items-center justify-center gap-2 text-white shadow-[0_15px_40px_-10px_rgba(34,197,94,0.6)] active:scale-95 disabled:opacity-50 bg-gradient-to-br from-emerald-400 to-green-600 transition-all";
-                btnAction.innerHTML = `<i data-lucide="log-in" class="w-10 h-10 mb-1"></i><span class="text-2xl font-bold">เข้างาน</span><span class="text-xs bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">กดเพื่อบันทึก</span>`;
+                btnAction.className = "relative z-10 w-36 h-36 sm:w-44 sm:h-44 rounded-full flex flex-col items-center justify-center gap-2 sm:gap-3 text-white shadow-[0_15px_40px_-10px_rgba(34,197,94,0.6)] active:scale-95 disabled:opacity-50 bg-gradient-to-br from-emerald-400 to-green-600 transition-all";
+                btnAction.innerHTML = `<i data-lucide="log-in" class="w-10 h-10 sm:w-12 sm:h-12 mb-1"></i><span class="text-xl font-bold">เข้างาน</span><span class="text-[10px] sm:text-xs bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">กดเพื่อบันทึก</span>`;
             } else {
                 currentStatus = 'in'; btnAction.disabled = false;
-                btnAction.className = "relative z-10 w-44 h-44 rounded-full flex flex-col items-center justify-center gap-2 text-white shadow-[0_15px_40px_-10px_rgba(249,115,22,0.6)] active:scale-95 disabled:opacity-50 bg-gradient-to-br from-orange-400 to-red-500 transition-all";
-                btnAction.innerHTML = `<i data-lucide="log-out" class="w-10 h-10 mb-1"></i><span class="text-2xl font-bold">ออกงาน</span><span class="text-xs bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">กดเพื่อบันทึก</span>`;
+                btnAction.className = "relative z-10 w-36 h-36 sm:w-44 sm:h-44 rounded-full flex flex-col items-center justify-center gap-2 sm:gap-3 text-white shadow-[0_15px_40px_-10px_rgba(249,115,22,0.6)] active:scale-95 disabled:opacity-50 bg-gradient-to-br from-orange-400 to-red-500 transition-all";
+                btnAction.innerHTML = `<i data-lucide="log-out" class="w-10 h-10 sm:w-12 sm:h-12 mb-1"></i><span class="text-xl font-bold">ออกงาน</span><span class="text-[10px] sm:text-xs bg-black/10 px-3 py-1 rounded-full backdrop-blur-sm">กดเพื่อบันทึก</span>`;
             }
             lucide.createIcons();
         }
@@ -1055,7 +1110,7 @@
                 const dateStr = new Date(log.timestamp).setHours(0,0,0,0) === new Date().setHours(0,0,0,0) ? 'วันนี้' : new Date(log.timestamp).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
                 const lateBadge = log.isLate ? '<span class="ml-2 text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">สาย</span>' : '';
                 const otBadge = (log.otHours > 0) ? `<span class="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded font-bold">OT ${log.otHours} ชม.</span>` : '';
-                html += `<div class="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-2xl fade-enter" style="animation-delay: ${i*40}ms"><div class="flex items-center gap-3"><div class="w-10 h-10 ${isOpIn ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-500'} rounded-xl flex items-center justify-center"><i data-lucide="${isOpIn ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i></div><div><p class="text-sm font-bold text-gray-800">${isOpIn ? 'เข้างาน' : 'ออกงาน'}${lateBadge}${otBadge}</p><p class="text-xs text-gray-500">${dateStr}</p></div></div><div class="text-right"><span class="text-base font-bold text-gray-900">${new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span><span class="text-xs text-gray-500 block">น.</span></div></div>`;
+                html += `<div class="flex items-center justify-between p-3.5 bg-gray-50 border border-gray-100 rounded-2xl fade-enter" style="animation-delay: ${i*40}ms"><div class="flex items-center gap-3 min-w-0"><div class="w-10 h-10 flex-shrink-0 ${isOpIn ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-500'} rounded-xl flex items-center justify-center"><i data-lucide="${isOpIn ? 'arrow-down-right' : 'arrow-up-right'}" class="w-5 h-5"></i></div><div class="min-w-0"><p class="text-sm font-bold text-gray-800 truncate">${isOpIn ? 'เข้างาน' : 'ออกงาน'}${lateBadge}${otBadge}</p><p class="text-xs text-gray-500">${dateStr}</p></div></div><div class="text-right flex-shrink-0"><span class="text-base font-bold text-gray-900">${new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span><span class="text-xs text-gray-500 block">น.</span></div></div>`;
             });
             container.innerHTML = html + '</div>'; lucide.createIcons(); setTimeout(() => container.querySelectorAll('.fade-enter').forEach(el => el.classList.add('fade-enter-active')), 50);
         }
@@ -1101,7 +1156,7 @@
                     dateDisplay = `${new Date(leave.startDate).toLocaleDateString('th-TH', { day:'numeric', month:'short' })} - ${new Date(leave.endDate).toLocaleDateString('th-TH', { day:'numeric', month:'short' })}`;
                 }
 
-                html += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative"><div class="flex justify-between items-start mb-2"><div><h3 class="font-bold text-gray-900">${leaveTypes[leave.type]}</h3><p class="text-xs text-gray-500">${dateDisplay}</p>${swapInfo}</div><span class="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${conf.bg} ${conf.text}"><i data-lucide="${conf.icon}" class="w-3 h-3"></i> ${conf.label}</span></div><p class="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg mt-2">${leave.reason}</p></div>`;
+                html += `<div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 relative"><div class="flex justify-between items-start mb-2"><div class="min-w-0 flex-1 pr-2"><h3 class="font-bold text-gray-900 truncate">${leaveTypes[leave.type]}</h3><p class="text-xs text-gray-500 truncate">${dateDisplay}</p>${swapInfo}</div><span class="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${conf.bg} ${conf.text} flex-shrink-0"><i data-lucide="${conf.icon}" class="w-3 h-3"></i> ${conf.label}</span></div><p class="text-sm text-gray-600 bg-gray-50 p-2 rounded-lg mt-2 break-words">${leave.reason}</p></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -1118,7 +1173,7 @@
                 <div class="space-y-2">`;
             upcoming.forEach(h => {
                 const dStr = new Date(h.date).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'short' });
-                html += `<div class="flex justify-between items-center bg-white/60 p-2 rounded-lg"><span class="text-xs font-bold text-gray-800">${h.name}</span><span class="text-[10px] text-gray-500 font-medium">${dStr}</span></div>`;
+                html += `<div class="flex justify-between items-center bg-white/60 p-2 rounded-lg min-w-0"><span class="text-xs font-bold text-gray-800 truncate flex-1">${h.name}</span><span class="text-[10px] text-gray-500 font-medium flex-shrink-0 ml-2">${dStr}</span></div>`;
             });
             html += `</div></div>`;
             container.innerHTML = html; lucide.createIcons();
@@ -1150,7 +1205,7 @@
                 const dStr = new Date(log.timestamp).toLocaleDateString('th-TH', {day:'numeric', month:'short'}) + ' ' + new Date(log.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
                 const lateBadge = log.isLate ? '<span class="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded font-bold">สาย</span>' : '';
                 const otBadge = (log.otHours > 0) ? `<span class="ml-1 text-[10px] bg-purple-100 text-purple-600 px-1 rounded font-bold">OT ${log.otHours}h</span>` : '';
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-2 h-10 rounded-full ${isOpIn ? 'bg-green-400' : 'bg-orange-400'}"></div><div><h4 class="font-bold text-sm text-gray-900">${log.employeeName || '?'} <span class="text-gray-400 font-normal">(${log.empId})</span></h4><p class="text-xs text-gray-500"><span class="${isOpIn ? 'text-green-600' : 'text-orange-500'} font-medium">${isOpIn ? 'เข้า' : 'ออก'}</span>${lateBadge}${otBadge} • ${dStr}</p></div></div><div class="flex gap-1"><button onclick="openEditLogModal('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteLog('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="w-2 h-10 flex-shrink-0 rounded-full ${isOpIn ? 'bg-green-400' : 'bg-orange-400'}"></div><div class="min-w-0 flex-1 pr-2"><h4 class="font-bold text-sm text-gray-900 truncate">${log.employeeName || '?'} <span class="text-gray-400 font-normal">(${log.empId})</span></h4><p class="text-xs text-gray-500 truncate"><span class="${isOpIn ? 'text-green-600' : 'text-orange-500'} font-medium">${isOpIn ? 'เข้า' : 'ออก'}</span>${lateBadge}${otBadge} • ${dStr}</p></div></div><div class="flex gap-1 flex-shrink-0"><button onclick="openEditLogModal('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteLog('${log.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -1174,7 +1229,7 @@
                 }
 
                 let actions = leave.status === 'pending' ? `<div class="flex gap-2 mt-3 pt-3 border-t border-gray-100"><button onclick="updateLeaveStatus('${leave.id}', 'rejected')" class="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100">ไม่อนุมัติ</button><button onclick="updateLeaveStatus('${leave.id}', 'approved')" class="flex-1 py-1.5 bg-green-50 text-green-600 text-xs font-bold rounded-lg hover:bg-green-100">อนุมัติ</button></div>` : '';
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border ${leave.status === 'pending' ? 'border-orange-300' : 'border-gray-100'} relative"><div class="flex justify-between items-start mb-2"><div><h4 class="font-bold text-sm text-gray-900">${leave.employeeName} <span class="text-gray-400 font-normal">(${leave.empId})</span></h4><p class="text-xs font-medium text-blue-600">${leaveTypes[leave.type]}</p><p class="text-xs text-gray-500">${dateDisplay}</p>${swapInfo}</div><span class="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${conf.bg} ${conf.text}"><i data-lucide="${conf.icon}" class="w-3 h-3"></i> ${conf.label}</span></div><p class="text-xs text-gray-600 bg-gray-50 p-2 rounded">${leave.reason}</p>${actions}</div>`;
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border ${leave.status === 'pending' ? 'border-orange-300' : 'border-gray-100'} relative"><div class="flex justify-between items-start mb-2"><div class="min-w-0 flex-1 pr-2"><h4 class="font-bold text-sm text-gray-900 truncate">${leave.employeeName} <span class="text-gray-400 font-normal">(${leave.empId})</span></h4><p class="text-xs font-medium text-blue-600 truncate">${leaveTypes[leave.type]}</p><p class="text-xs text-gray-500 truncate">${dateDisplay}</p>${swapInfo}</div><span class="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md ${conf.bg} ${conf.text} flex-shrink-0"><i data-lucide="${conf.icon}" class="w-3 h-3"></i> ${conf.label}</span></div><p class="text-xs text-gray-600 bg-gray-50 p-2 rounded break-words">${leave.reason}</p>${actions}</div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -1187,7 +1242,7 @@
                 const wStart = profile.workStartTime || '09:00';
                 const wEnd = profile.workEndTime || '18:00';
                 const offDayStr = dayNames[parseInt(profile.weeklyDayOff || 0)];
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">${(profile.name || '?').charAt(0)}</div><div><h4 class="font-bold text-sm text-gray-900">${profile.name}</h4><p class="text-[10px] font-bold text-gray-400">รหัส: ${profile.empId} • ฿${profile.dailyRate || 0}/วัน • หยุด: ${offDayStr}</p><p class="text-[10px] text-blue-500 mt-0.5">เวลาทำงาน: ${wStart} - ${wEnd}</p></div></div><div class="flex gap-1"><button onclick="openEditEmployeeModal('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteProfile('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><i data-lucide="user-minus" class="w-4 h-4"></i></button></div></div>`;
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="w-10 h-10 flex-shrink-0 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold">${(profile.name || '?').charAt(0)}</div><div class="min-w-0 flex-1 pr-2"><h4 class="font-bold text-sm text-gray-900 truncate">${profile.name}</h4><p class="text-[10px] font-bold text-gray-400 truncate">รหัส: ${profile.empId} • ฿${profile.dailyRate || 0}/วัน • หยุด: ${offDayStr}</p><p class="text-[10px] text-blue-500 mt-0.5 truncate">เวลาทำงาน: ${wStart} - ${wEnd}</p></div></div><div class="flex gap-1 flex-shrink-0"><button onclick="openEditEmployeeModal('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-500 hover:bg-blue-100 transition"><i data-lucide="edit-3" class="w-4 h-4"></i></button><button onclick="deleteProfile('${profile.empId}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition"><i data-lucide="user-minus" class="w-4 h-4"></i></button></div></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -1202,13 +1257,7 @@
                 const dStr = dObj.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
                 const isPast = dObj.setHours(23,59,59,999) < now;
                 const opacity = isPast ? 'opacity-60' : '';
-                html += `<div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${opacity}">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-pink-50 text-pink-500 rounded-xl flex items-center justify-center font-bold"><i data-lucide="calendar" class="w-5 h-5"></i></div>
-                        <div><h4 class="font-bold text-sm text-gray-900">${h.name}</h4><p class="text-[11px] font-bold text-gray-500">${dStr}</p></div>
-                    </div>
-                    <button onclick="deleteHoliday('${h.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </div>`;
+                html += `<div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center ${opacity}"><div class="flex items-center gap-3 min-w-0 flex-1"><div class="w-10 h-10 flex-shrink-0 bg-pink-50 text-pink-500 rounded-xl flex items-center justify-center font-bold"><i data-lucide="calendar" class="w-5 h-5"></i></div><div class="min-w-0 flex-1 pr-2"><h4 class="font-bold text-sm text-gray-900 truncate">${h.name}</h4><p class="text-[11px] font-bold text-gray-500 truncate">${dStr}</p></div></div><button onclick="deleteHoliday('${h.id}')" class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex-shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`;
             });
             container.innerHTML = html; lucide.createIcons();
         }
@@ -1285,7 +1334,7 @@
                 if(holidayCount > 0) dayText += ` + นักขัต ${holidayCount} วัน`;
                 if(leaveCount > 0) dayText += ` + ลา/ชดเชย ${leaveCount} วัน`;
 
-                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden"><div class="flex justify-between items-center mb-1"><h4 class="font-bold text-sm text-gray-900">${profile.name} <span class="text-xs text-gray-400 font-normal">(${profile.empId})</span></h4><span class="font-bold text-green-600">฿${totalPay.toLocaleString()}</span></div><div class="flex justify-between items-center text-[10px] text-gray-500 mb-2"><p>ค่าแรง: ฿${dailyRate}/วัน • OT: ฿${profile.otRate || 0}/ชม.</p></div><div class="flex flex-wrap gap-2"><span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold text-[10px]">${dayText} (฿${totalRegularPay.toLocaleString()})</span>${totalOtHours > 0 ? `<span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold text-[10px]">OT ${totalOtHours.toFixed(1)} ชม. (฿${totalOtPay.toLocaleString()})</span>` : ''}</div></div>`;
+                html += `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 relative overflow-hidden"><div class="flex justify-between items-center mb-1"><h4 class="font-bold text-sm text-gray-900 truncate pr-2">${profile.name} <span class="text-xs text-gray-400 font-normal">(${profile.empId})</span></h4><span class="font-bold text-green-600 flex-shrink-0">฿${totalPay.toLocaleString()}</span></div><div class="flex justify-between items-center text-[10px] text-gray-500 mb-2"><p class="truncate">ค่าแรง: ฿${dailyRate}/วัน • OT: ฿${profile.otRate || 0}/ชม.</p></div><div class="flex flex-wrap gap-2"><span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold text-[10px]">${dayText} (฿${totalRegularPay.toLocaleString()})</span>${totalOtHours > 0 ? `<span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded font-bold text-[10px]">OT ${totalOtHours.toFixed(1)} ชม. (฿${totalOtPay.toLocaleString()})</span>` : ''}</div></div>`;
             });
             html = `<div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-2 flex justify-between items-center"><span class="text-sm font-bold text-green-800">ยอดรวมจ่ายสัปดาห์นี้:</span><span class="text-lg font-bold text-green-600">฿${totalCompanyPay.toLocaleString()}</span></div>` + html;
             container.innerHTML = html; lucide.createIcons();
@@ -1306,33 +1355,33 @@
             const totalLeaveDays = monthLeaves.filter(l => l.type !== 'swap').reduce((sum, l) => sum + calculateLeaveDays(l.startDate, l.endDate), 0);
 
             let html = `
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-2">
-                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div class="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-200 mb-2">
+                    <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2 text-sm sm:text-base">
                         <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-500"></i>
                         ภาพรวมเดือน ${now.toLocaleDateString('th-TH', {month:'long', year:'numeric'})}
                     </h3>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-red-50 p-4 rounded-xl border border-red-100 flex flex-col justify-center items-center text-center">
-                            <p class="text-[11px] text-red-500 font-bold mb-1">เข้าสาย (ครั้ง)</p>
-                            <h4 class="text-3xl font-black text-red-700">${totalLate}</h4>
+                    <div class="grid grid-cols-2 gap-2 sm:gap-3">
+                        <div class="bg-red-50 p-3 sm:p-4 rounded-xl border border-red-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[10px] sm:text-[11px] text-red-500 font-bold mb-1">เข้าสาย (ครั้ง)</p>
+                            <h4 class="text-2xl sm:text-3xl font-black text-red-700">${totalLate}</h4>
                         </div>
-                        <div class="bg-purple-50 p-4 rounded-xl border border-purple-100 flex flex-col justify-center items-center text-center">
-                            <p class="text-[11px] text-purple-500 font-bold mb-1">ชั่วโมง OT รวม</p>
-                            <h4 class="text-3xl font-black text-purple-700">${totalOT.toFixed(1)}</h4>
+                        <div class="bg-purple-50 p-3 sm:p-4 rounded-xl border border-purple-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[10px] sm:text-[11px] text-purple-500 font-bold mb-1">ชั่วโมง OT รวม</p>
+                            <h4 class="text-2xl sm:text-3xl font-black text-purple-700">${totalOT.toFixed(1)}</h4>
                         </div>
-                        <div class="bg-orange-50 p-4 rounded-xl border border-orange-100 flex flex-col justify-center items-center text-center">
-                            <p class="text-[11px] text-orange-500 font-bold mb-1">ลางาน/ใช้โควตา (วัน)</p>
-                            <h4 class="text-3xl font-black text-orange-700">${totalLeaveDays}</h4>
+                        <div class="bg-orange-50 p-3 sm:p-4 rounded-xl border border-orange-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[10px] sm:text-[11px] text-orange-500 font-bold mb-1">ลางาน/ใช้โควตา</p>
+                            <h4 class="text-2xl sm:text-3xl font-black text-orange-700">${totalLeaveDays}</h4>
                         </div>
-                        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center text-center">
-                            <p class="text-[11px] text-blue-500 font-bold mb-1">รายการตอกบัตร</p>
-                            <h4 class="text-3xl font-black text-blue-700">${monthLogs.length}</h4>
+                        <div class="bg-blue-50 p-3 sm:p-4 rounded-xl border border-blue-100 flex flex-col justify-center items-center text-center">
+                            <p class="text-[10px] sm:text-[11px] text-blue-500 font-bold mb-1">รายการตอกบัตร</p>
+                            <h4 class="text-2xl sm:text-3xl font-black text-blue-700">${monthLogs.length}</h4>
                         </div>
                     </div>
                 </div>
-                <button onclick="exportLogsToCSV()" class="w-full bg-[#107c41] hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                <button onclick="exportLogsToCSV()" class="w-full bg-[#107c41] hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all text-sm sm:text-base">
                     <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
-                    ดาวน์โหลดรายงาน Excel (CSV)
+                    ดาวน์โหลดรายงาน Excel
                 </button>
             `;
             container.innerHTML = html;
@@ -1383,7 +1432,6 @@
         setInterval(() => { const now = new Date(); const elTime = document.getElementById('live-time'), elDate = document.getElementById('live-date'); if(elTime) elTime.textContent = now.toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' }); if(elDate) elDate.textContent = now.toLocaleDateString('th-TH', { weekday:'long', year:'numeric', month:'long', day:'numeric' }); }, 1000);
 
         document.getElementById('btn-action').addEventListener('click', window.handleClockAction);
-        document.getElementById('input-emp-id').addEventListener('keypress', (e) => e.key === 'Enter' && window.loginWithEmpId());
         document.getElementById('input-admin-pin').addEventListener('keypress', (e) => e.key === 'Enter' && window.verifyAdmin());
 
     </script>
