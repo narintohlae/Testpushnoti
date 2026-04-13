@@ -38,6 +38,11 @@
             </button>
         </div>
     </nav>
+    
+    <!-- แถบแจ้งเตือน Offline -->
+    <div id="offline-banner" class="hide bg-rose-500 text-white text-center py-1.5 text-xs font-bold w-full z-10">
+        <i class="fa-solid fa-wifi-slash mr-1"></i> โหมดออฟไลน์: ข้อมูลจะถูกบันทึกลงเครื่องชั่วคราวและซิงค์เมื่อมีอินเทอร์เน็ต
+    </div>
 
     <!-- ==================== หน้าจอ Login ==================== -->
     <div id="view-login" class="flex-1 flex justify-center items-center p-4">
@@ -85,9 +90,11 @@
     <!-- ==================== หน้าจอ Employee ==================== -->
     <div id="view-employee" class="hide flex-1 flex flex-col bg-gray-50">
         <div class="bg-white border-b shadow-sm sticky top-0 z-10">
-            <div class="flex max-w-md mx-auto">
-                <button id="tab-emp-time" class="flex-1 py-3 text-center tab-active focus:outline-none transition"><i class="fa-solid fa-camera mr-2"></i>บันทึกเวลา</button>
-                <button id="tab-emp-leave" class="flex-1 py-3 text-center tab-inactive focus:outline-none transition"><i class="fa-solid fa-calendar-minus mr-2"></i>ขอลางาน</button>
+            <div class="flex max-w-md mx-auto overflow-x-auto whitespace-nowrap px-2">
+                <button id="tab-emp-time" class="py-3 px-4 text-center tab-active focus:outline-none transition"><i class="fa-solid fa-camera mr-2"></i>บันทึกเวลา</button>
+                <button id="tab-emp-leave" class="py-3 px-4 text-center tab-inactive focus:outline-none transition"><i class="fa-solid fa-calendar-minus mr-2"></i>ขอลางาน</button>
+                <!-- แท็บเฉพาะหัวหน้าแผนก -->
+                <button id="tab-emp-approve" class="hide py-3 px-4 text-center tab-inactive focus:outline-none transition"><i class="fa-solid fa-check-double mr-2"></i>อนุมัติใบลา</button>
             </div>
         </div>
 
@@ -249,6 +256,17 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Section: อนุมัติใบลา (สำหรับหัวหน้าแผนก) -->
+                <div id="section-emp-approve" class="hide space-y-6">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="font-bold text-gray-700 mb-3"><i class="fa-solid fa-user-check text-blue-500 mr-2"></i>คำขอลางานในแผนก (รอตรวจสอบ)</h3>
+                        <div id="sup-leave-list" class="space-y-3">
+                            <div class="text-center text-sm text-gray-400 py-4">กำลังโหลด...</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -395,9 +413,13 @@
                 <div id="section-admin-employees" class="hide space-y-6">
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                         <h3 class="text-lg font-bold text-gray-800 mb-4">เพิ่มพนักงานใหม่</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <input type="text" id="new-emp-name" placeholder="ชื่อ-นามสกุล พนักงาน" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                             <input type="text" id="new-emp-pin" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="ตั้งรหัส PIN (6 หลัก)" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select id="new-emp-role" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="staff">สิทธิ์: พนักงานทั่วไป</option>
+                                <option value="supervisor">สิทธิ์: หัวหน้าแผนก</option>
+                            </select>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
                             <input type="number" id="new-emp-daily-rate" placeholder="ค่าจ้างรายวัน (บาท)" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
@@ -426,7 +448,7 @@
                                 <thead>
                                     <tr class="bg-gray-50 text-gray-600 text-sm uppercase border-b">
                                         <th class="p-4">ชื่อพนักงาน</th>
-                                        <th class="p-4">แผนก & กะ</th>
+                                        <th class="p-4">สิทธิ์ / แผนก & กะ</th>
                                         <th class="p-4 text-center">รหัส PIN</th>
                                         <th class="p-4 text-center">จัดการ/รายงาน</th>
                                     </tr>
@@ -554,7 +576,7 @@
         let allLogsForExport = [];
         let allEmployeesList = []; 
         
-        let listeners = { empSelf: null, empTimelogs: null, empLeaves: null, adminTimelogs: null, adminLeaves: null, adminEmployees: null };
+        let listeners = { empSelf: null, empTimelogs: null, empLeaves: null, supLeaves: null, adminTimelogs: null, adminLeaves: null, adminEmployees: null };
 
         const views = { login: document.getElementById('view-login'), employee: document.getElementById('view-employee'), admin: document.getElementById('view-admin') };
         const navUserInfo = document.getElementById('user-info');
@@ -573,12 +595,32 @@
 
         document.getElementById('tab-emp-time').addEventListener('click', () => switchTabs('tab-emp-time', 'section-emp-time', 'tab-emp-', 'section-emp-'));
         document.getElementById('tab-emp-leave').addEventListener('click', () => switchTabs('tab-emp-leave', 'section-emp-leave', 'tab-emp-', 'section-emp-'));
+        document.getElementById('tab-emp-approve').addEventListener('click', () => switchTabs('tab-emp-approve', 'section-emp-approve', 'tab-emp-', 'section-emp-'));
 
         document.getElementById('tab-admin-dashboard').addEventListener('click', () => switchTabs('tab-admin-dashboard', 'section-admin-dashboard', 'tab-admin-', 'section-admin-'));
         document.getElementById('tab-admin-timelogs').addEventListener('click', () => switchTabs('tab-admin-timelogs', 'section-admin-timelogs', 'tab-admin-', 'section-admin-'));
         document.getElementById('tab-admin-leaves').addEventListener('click', () => switchTabs('tab-admin-leaves', 'section-admin-leaves', 'tab-admin-', 'section-admin-'));
         document.getElementById('tab-admin-employees').addEventListener('click', () => switchTabs('tab-admin-employees', 'section-admin-employees', 'tab-admin-', 'section-admin-'));
         document.getElementById('tab-admin-settings').addEventListener('click', () => switchTabs('tab-admin-settings', 'section-admin-settings', 'tab-admin-', 'section-admin-'));
+
+        // --- Offline Sync Logic ---
+        window.addEventListener('online', async () => {
+            document.getElementById('offline-banner').classList.add('hide');
+            const offlineLogs = JSON.parse(localStorage.getItem('offlineTimeLogs') || '[]');
+            if (offlineLogs.length > 0 && currentEmployee) {
+                Swal.fire({ title: 'กำลังซิงค์ข้อมูลออฟไลน์...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                try {
+                    for (const log of offlineLogs) {
+                        log.timestamp = Timestamp.fromDate(new Date(log.timestampStr));
+                        delete log.timestampStr;
+                        await addDoc(collection(db, "timelogs"), log);
+                    }
+                    localStorage.removeItem('offlineTimeLogs');
+                    Swal.fire({ icon: 'success', title: 'ซิงค์ข้อมูลออฟไลน์สำเร็จ!', timer: 1500 });
+                } catch(e) { console.error("Sync error", e); }
+            }
+        });
+        window.addEventListener('offline', () => { document.getElementById('offline-banner').classList.remove('hide'); });
 
         async function loadSystemSettings() {
             try {
@@ -643,7 +685,15 @@
                     userNameSpan.innerHTML = '<i class="fa-solid fa-crown text-yellow-300 mr-1"></i> ผู้ดูแลระบบ';
                     loadSystemSettings().then(() => { loadAdminData(); populateSettingsForm(); });
                 } else if (viewName === 'employee') {
-                    userNameSpan.innerHTML = '<i class="fa-solid fa-user mr-1"></i> ' + currentEmployee.name;
+                    const roleTxt = currentEmployee.role === 'supervisor' ? '<i class="fa-solid fa-user-tie mr-1 text-amber-300"></i> หัวหน้า' : '<i class="fa-solid fa-user mr-1"></i>';
+                    userNameSpan.innerHTML = roleTxt + ' ' + currentEmployee.name;
+                    
+                    if (currentEmployee.role === 'supervisor') {
+                        document.getElementById('tab-emp-approve').classList.remove('hide');
+                    } else {
+                        document.getElementById('tab-emp-approve').classList.add('hide');
+                    }
+
                     loadSystemSettings().then(() => { 
                         initLocation(); 
                         loadEmployeeData(); 
@@ -657,6 +707,8 @@
                     });
                 }
             }
+            
+            if (!navigator.onLine) document.getElementById('offline-banner').classList.remove('hide');
         }
 
         // Auth
@@ -798,19 +850,32 @@
 
         async function saveTimeLog(type) {
             const remark = document.getElementById('log-remark').value.trim();
+            const logData = {
+                userId: currentEmployee.id,
+                name: currentEmployee.name,
+                type: type,
+                lat: currentLat, lng: currentLng,
+                branchName: currentBranchName, 
+                photoBase64: capturedPhotoData,
+                remark: remark,
+                isManual: false 
+            };
+
+            // ออฟไลน์ซิงค์: เก็บลงเครื่องถ้ายกเลิกเน็ต
+            if (!navigator.onLine) {
+                logData.timestampStr = new Date().toISOString(); 
+                const offlineLogs = JSON.parse(localStorage.getItem('offlineTimeLogs') || '[]');
+                offlineLogs.push(logData);
+                localStorage.setItem('offlineTimeLogs', JSON.stringify(offlineLogs));
+                Swal.fire({ icon: 'info', title: 'โหมดออฟไลน์', text: `บันทึกเวลา${type === 'in' ? 'เข้า' : 'ออก'}ลงในเครื่องแล้ว จะซิงค์เมื่อมีเน็ต`, timer: 2000 });
+                btnRetake.click(); document.getElementById('log-remark').value = '';
+                return;
+            }
+
             Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                await addDoc(collection(db, "timelogs"), {
-                    userId: currentEmployee.id,
-                    name: currentEmployee.name,
-                    type: type,
-                    timestamp: serverTimestamp(),
-                    lat: currentLat, lng: currentLng,
-                    branchName: currentBranchName, 
-                    photoBase64: capturedPhotoData,
-                    remark: remark,
-                    isManual: false 
-                });
+                logData.timestamp = serverTimestamp();
+                await addDoc(collection(db, "timelogs"), logData);
                 Swal.fire({ icon: 'success', title: `บันทึกเวลา${type === 'in' ? 'เข้า' : 'ออก'}สำเร็จ!`, timer: 1500 });
                 btnRetake.click(); 
                 document.getElementById('log-remark').value = ''; 
@@ -820,6 +885,23 @@
         document.getElementById('btn-checkout').addEventListener('click', () => saveTimeLog('out'));
 
         function loadEmployeeData() {
+            // ระบบแจ้งเตือนพนักงานเรื่องใบลา
+            const qNotif = query(collection(db, "leave_requests"), where("userId", "==", currentEmployee.id), where("notified", "==", false));
+            getDocs(qNotif).then(snap => {
+                if(!snap.empty) {
+                    let msg = '';
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if(data.status === 'approved') msg += `✅ ${data.type} ได้รับการอนุมัติแล้ว<br>`;
+                        if(data.status === 'rejected') msg += `❌ ${data.type} ไม่ได้รับการอนุมัติ<br>`;
+                        if(data.status === 'approved' || data.status === 'rejected') {
+                            updateDoc(doc(db, "leave_requests", d.id), { notified: true });
+                        }
+                    });
+                    if(msg) Swal.fire({ title: 'อัปเดตสถานะการลา', html: msg, icon: 'info' });
+                }
+            });
+
             const shiftDetails = getEmployeeShiftDetails(currentEmployee.id);
             document.getElementById('emp-dept-shift-badge').innerHTML = `${shiftDetails.deptName} | ${shiftDetails.shiftName}`;
 
@@ -938,9 +1020,12 @@
                 else {
                     let html = '';
                     leaves.forEach(req => {
-                        let statusHtml = req.status === 'pending' ? '<span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">รออนุมัติ</span>' : 
-                                         req.status === 'approved' ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">อนุมัติแล้ว</span>' : 
-                                         '<span class="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-1 rounded">ไม่อนุมัติ</span>';
+                        let statusHtml = '';
+                        if (req.status === 'pending') statusHtml = '<span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">รอหัวหน้าพิจารณา</span>';
+                        else if (req.status === 'supervisor_approved') statusHtml = '<span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">รอ HR อนุมัติ</span>';
+                        else if (req.status === 'approved') statusHtml = '<span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">อนุมัติแล้ว</span>';
+                        else statusHtml = '<span class="text-xs font-bold text-rose-600 bg-rose-100 px-2 py-1 rounded">ไม่อนุมัติ</span>';
+                        
                         const formatDate = (dateStr) => { if(!dateStr) return ''; const p = dateStr.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
                         const attachmentStr = req.attachmentBase64 ? `<p class="text-xs text-blue-500 mt-1 cursor-pointer hover:underline" onclick="window.open('${req.attachmentBase64}')"><i class="fa-solid fa-paperclip"></i> ดูเอกสารแนบ</p>` : '';
                         
@@ -952,14 +1037,51 @@
                                     <p class="text-xs text-gray-400 mt-1">เหตุผล: ${req.reason}</p>
                                     ${attachmentStr}
                                 </div>
-                                <div>${statusHtml}</div>
+                                <div class="text-right">${statusHtml}</div>
                             </div>
                         `;
                     });
                     container.innerHTML = html;
                 }
             });
+
+            // Supervisor: Load leaves for their department
+            if (currentEmployee.role === 'supervisor') {
+                const qSup = query(collection(db, "leave_requests"), where("departmentId", "==", currentEmployee.departmentId), where("status", "==", "pending"));
+                listeners.supLeaves = onSnapshot(qSup, (snapshot) => {
+                    const container = document.getElementById('sup-leave-list');
+                    const leaves = []; snapshot.forEach(doc => leaves.push({ id: doc.id, ...doc.data() }));
+                    
+                    if (leaves.length === 0) container.innerHTML = '<div class="text-center text-sm text-gray-400 py-4">ไม่มีคำขอที่รออนุมัติ</div>';
+                    else {
+                        let html = '';
+                        leaves.forEach(req => {
+                            const formatDate = (dateStr) => { if(!dateStr) return ''; const p = dateStr.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; };
+                            html += `
+                                <div class="bg-gray-50 p-3 rounded-lg border border-blue-200">
+                                    <p class="font-bold text-sm text-gray-800">${req.name}</p>
+                                    <p class="text-sm font-bold text-blue-600">${req.type} <span class="text-xs text-gray-500 font-normal">(${req.days} วัน)</span></p>
+                                    <p class="text-xs text-gray-500">${formatDate(req.startDate)} - ${formatDate(req.endDate)}</p>
+                                    <p class="text-xs text-gray-600 mt-1 bg-white p-2 rounded border">เหตุผล: ${req.reason}</p>
+                                    <div class="flex gap-2 mt-3">
+                                        <button onclick="window.supUpdateLeave('${req.id}', 'supervisor_approved')" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs py-2 rounded shadow font-bold"><i class="fa-solid fa-check mr-1"></i> อนุมัติ</button>
+                                        <button onclick="window.supUpdateLeave('${req.id}', 'rejected')" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white text-xs py-2 rounded shadow font-bold"><i class="fa-solid fa-xmark mr-1"></i> ปฏิเสธ</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        container.innerHTML = html;
+                    }
+                });
+            }
         }
+
+        window.supUpdateLeave = async (docId, status) => {
+            try {
+                await updateDoc(doc(db, "leave_requests", docId), { status: status, notified: false });
+                Swal.fire({ icon: 'success', title: 'อัปเดตสำเร็จ', timer: 1000, showConfirmButton: false });
+            } catch(e) { Swal.fire('ผิดพลาด', e.message, 'error'); }
+        };
 
         document.getElementById('btn-submit-leave').addEventListener('click', async () => {
             const type = document.getElementById('leave-type').value, startDate = document.getElementById('leave-start').value, endDate = document.getElementById('leave-end').value, reason = document.getElementById('leave-reason').value.trim();
@@ -971,22 +1093,23 @@
                 return Swal.fire('โควตาไม่พอ', `คุณมีสิทธิ์ ${type} เหลือเพียง ${currentQuotas[type]} วัน`, 'error');
             }
 
-            // จัดการไฟล์แนบ (ถ้ามี) แบบ Base64 ขนาดเล็ก
             const fileInput = document.getElementById('leave-attachment');
             let attachmentBase64 = null;
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
                 if (file.size > 800 * 1024) return Swal.fire('ไฟล์ใหญ่เกินไป', 'ขนาดไฟล์ต้องไม่เกิน 800KB', 'warning');
                 const reader = new FileReader();
-                attachmentBase64 = await new Promise((resolve) => {
-                    reader.onload = (e) => resolve(e.target.result);
-                    reader.readAsDataURL(file);
-                });
+                attachmentBase64 = await new Promise((resolve) => { reader.onload = (e) => resolve(e.target.result); reader.readAsDataURL(file); });
             }
 
             Swal.fire({ title: 'กำลังส่งคำขอ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                await addDoc(collection(db, "leave_requests"), { userId: currentEmployee.id, name: currentEmployee.name, type: type, days: days, startDate: startDate, endDate: endDate, reason: reason, attachmentBase64: attachmentBase64, status: 'pending', timestamp: serverTimestamp() });
+                await addDoc(collection(db, "leave_requests"), { 
+                    userId: currentEmployee.id, name: currentEmployee.name, 
+                    departmentId: currentEmployee.departmentId, // ใส่ dept เพื่อให้หัวหน้าเห็น
+                    type: type, days: days, startDate: startDate, endDate: endDate, reason: reason, 
+                    attachmentBase64: attachmentBase64, status: 'pending', notified: false, timestamp: serverTimestamp() 
+                });
                 Swal.fire('สำเร็จ', 'ส่งคำขอลางานเรียบร้อยแล้ว', 'success');
                 document.getElementById('leave-start').value = ''; document.getElementById('leave-end').value = ''; document.getElementById('leave-reason').value = ''; document.getElementById('leave-days').value = ''; document.getElementById('leave-attachment').value = '';
             } catch (error) { Swal.fire('ผิดพลาด', error.message, 'error'); }
@@ -1026,7 +1149,8 @@
                     empFilterHtml += `<option value="${doc.id}">${data.name}</option>`;
                     
                     const shiftDetails = getEmployeeShiftDetails(doc.id);
-                    const deptShiftHtml = `<p class="text-xs font-bold text-gray-700">${shiftDetails.deptName}</p><p class="text-[10px] text-gray-500">${shiftDetails.shiftName}</p>`;
+                    const roleTxt = data.role === 'supervisor' ? '<span class="text-amber-600 font-bold"><i class="fa-solid fa-user-tie"></i> หัวหน้า</span>' : '<span class="text-gray-500">พนักงาน</span>';
+                    const deptShiftHtml = `<p class="text-xs mb-1">${roleTxt}</p><p class="text-xs font-bold text-gray-700">${shiftDetails.deptName}</p><p class="text-[10px] text-gray-500">${shiftDetails.shiftName}</p>`;
                     
                     empHtml += `
                         <tr class="hover:bg-gray-50 border-b">
@@ -1116,20 +1240,25 @@
                         const todayStr = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
 
                         leaves.forEach(req => {
-                            if (req.status === 'pending') pendingCount++;
+                            if (req.status === 'pending' || req.status === 'supervisor_approved') pendingCount++;
                             if (req.status === 'approved' && todayStr >= req.startDate && todayStr <= req.endDate) leaveCountToday++;
 
                             const reqDate = req.timestamp ? req.timestamp.toDate().toLocaleDateString('th-TH') : '';
-                            let statusBadge = req.status === 'pending' ? '<span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full">รออนุมัติ</span>' : req.status === 'approved' ? '<span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">อนุมัติแล้ว</span>' : '<span class="text-xs font-bold text-rose-600 bg-rose-100 px-3 py-1 rounded-full">ไม่อนุมัติ</span>';
+                            
+                            let statusBadge = '';
+                            if (req.status === 'pending') statusBadge = '<span class="text-xs font-bold text-yellow-600 bg-yellow-100 px-3 py-1 rounded-full">รอหัวหน้าตรวจสอบ</span>';
+                            else if (req.status === 'supervisor_approved') statusBadge = '<span class="text-xs font-bold text-blue-600 bg-blue-100 px-3 py-1 rounded-full">รอ HR อนุมัติ</span>';
+                            else if (req.status === 'approved') statusBadge = '<span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-3 py-1 rounded-full">อนุมัติแล้ว</span>';
+                            else statusBadge = '<span class="text-xs font-bold text-rose-600 bg-rose-100 px-3 py-1 rounded-full">ไม่อนุมัติ</span>';
                             
                             const attachmentStr = req.attachmentBase64 ? `<p class="text-xs text-blue-500 mt-1 cursor-pointer hover:underline" onclick="window.open('${req.attachmentBase64}')"><i class="fa-solid fa-paperclip"></i> ดูเอกสารแนบ</p>` : '';
 
                             let actionBtns = '';
-                            if (req.status === 'pending') {
+                            if (req.status === 'pending' || req.status === 'supervisor_approved') {
                                 actionBtns = `
                                     <div class="flex gap-1 justify-center items-center">
-                                        <button onclick="window.updateLeaveStatus('${req.id}', 'approved')" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-2 py-1 rounded shadow"><i class="fa-solid fa-check"></i></button>
-                                        <button onclick="window.updateLeaveStatus('${req.id}', 'rejected')" class="bg-rose-500 hover:bg-rose-600 text-white text-xs px-2 py-1 rounded shadow"><i class="fa-solid fa-xmark"></i></button>
+                                        <button onclick="window.updateLeaveStatus('${req.id}', 'approved')" class="bg-emerald-500 hover:bg-emerald-600 text-white text-xs px-2 py-1 rounded shadow" title="อนุมัติ"><i class="fa-solid fa-check"></i></button>
+                                        <button onclick="window.updateLeaveStatus('${req.id}', 'rejected')" class="bg-rose-500 hover:bg-rose-600 text-white text-xs px-2 py-1 rounded shadow" title="ไม่อนุมัติ"><i class="fa-solid fa-xmark"></i></button>
                                         <button onclick="window.deleteLeave('${req.id}')" class="bg-gray-200 hover:bg-gray-300 text-gray-600 text-xs px-2 py-1 rounded shadow ml-1" title="ลบรายการ"><i class="fa-solid fa-trash"></i></button>
                                     </div>
                                 `;
@@ -1400,14 +1529,26 @@
                     <div class="text-left space-y-3 mt-4">
                         <div><label class="text-sm text-gray-600">ชื่อ-นามสกุล</label><input id="swal-e-name" class="w-full p-2 border rounded outline-none" value="${emp.name}"></div>
                         <div><label class="text-sm text-gray-600">รหัส PIN</label><input id="swal-e-pin" class="w-full p-2 border rounded outline-none tracking-widest text-center" value="${emp.pin}" maxlength="6" inputmode="numeric" pattern="[0-9]*"></div>
+                        
+                        <hr class="my-2 border-gray-200">
+                        <p class="text-sm font-bold text-gray-700">ตำแหน่ง / แผนก / ค่าจ้าง</p>
                         <div class="grid grid-cols-2 gap-2">
-                            <div><label class="text-sm text-gray-600">ค่าจ้างรายวัน (บาท)</label><input id="swal-e-daily" type="number" class="w-full p-2 border rounded outline-none" value="${dailyRate}"></div>
-                            <div><label class="text-sm text-gray-600">เรท OT/ชม. (บาท)</label><input id="swal-e-ot" type="number" class="w-full p-2 border rounded outline-none" value="${otRate}"></div>
+                            <div><label class="text-sm text-gray-600">สิทธิ์ผู้ใช้งาน</label>
+                                <select id="swal-e-role" class="w-full p-2 border rounded outline-none text-sm">
+                                    <option value="staff" ${emp.role === 'staff' || !emp.role ? 'selected' : ''}>พนักงานทั่วไป</option>
+                                    <option value="supervisor" ${emp.role === 'supervisor' ? 'selected' : ''}>หัวหน้าแผนก</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-2">
+                        <div class="grid grid-cols-2 gap-2 mt-2">
                             <div><label class="text-sm text-gray-600">แผนก</label><select id="swal-e-dept" class="w-full p-2 border rounded outline-none text-sm">${deptOptions}</select></div>
                             <div><label class="text-sm text-gray-600">กะเวลา</label><select id="swal-e-shift" class="w-full p-2 border rounded outline-none text-sm">${shiftOptions}</select></div>
                         </div>
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div><label class="text-sm text-gray-600">ค่าจ้างรายวัน (บาท)</label><input id="swal-e-daily" type="number" class="w-full p-2 border rounded outline-none" value="${dailyRate}"></div>
+                            <div><label class="text-sm text-gray-600">เรท OT/ชม. (บาท)</label><input id="swal-e-ot" type="number" class="w-full p-2 border rounded outline-none" value="${otRate}"></div>
+                        </div>
+
                         <hr class="my-2 border-gray-200">
                         <p class="text-sm font-bold text-gray-700">โควตาวันลา (วัน)</p>
                         <div class="grid grid-cols-3 gap-2">
@@ -1420,12 +1561,13 @@
                 focusConfirm: false, showCancelButton: true, confirmButtonText: 'บันทึกการเปลี่ยนแปลง', cancelButtonText: 'ยกเลิก',
                 preConfirm: () => {
                     const name = document.getElementById('swal-e-name').value.trim(), pin = document.getElementById('swal-e-pin').value.trim();
+                    const role = document.getElementById('swal-e-role').value;
                     const deptId = document.getElementById('swal-e-dept').value, shiftId = document.getElementById('swal-e-shift').value;
                     const dRate = parseFloat(document.getElementById('swal-e-daily').value) || 0;
                     const oRate = parseFloat(document.getElementById('swal-e-ot').value) || 0;
                     if (!name || !pin || pin.length !== 6) { Swal.showValidationMessage('กรุณากรอกชื่อและรหัส PIN 6 หลักให้ครบถ้วน'); return false; }
                     return { 
-                        name, pin, departmentId: deptId, shiftId: shiftId,
+                        name, pin, role, departmentId: deptId, shiftId: shiftId,
                         dailyRate: dRate, otRate: oRate,
                         quotas: { 'ลาป่วย': parseFloat(document.getElementById('swal-q-sick').value) || 0, 'ลากิจ': parseFloat(document.getElementById('swal-q-personal').value) || 0, 'ลาพักร้อน': parseFloat(document.getElementById('swal-q-vacation').value) || 0, 'อื่นๆ': quotas['อื่นๆ'] || 0 }
                     };
@@ -1439,7 +1581,11 @@
                 }
                 Swal.fire({ title: 'กำลังบันทึก...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
                 try {
-                    await updateDoc(doc(db, "employees", docId), { name: formValues.name, pin: formValues.pin, departmentId: formValues.departmentId, shiftId: formValues.shiftId, dailyRate: formValues.dailyRate, otRate: formValues.otRate, quotas: formValues.quotas });
+                    await updateDoc(doc(db, "employees", docId), { 
+                        name: formValues.name, pin: formValues.pin, role: formValues.role,
+                        departmentId: formValues.departmentId, shiftId: formValues.shiftId, 
+                        dailyRate: formValues.dailyRate, otRate: formValues.otRate, quotas: formValues.quotas 
+                    });
                     Swal.fire({ icon: 'success', title: 'อัปเดตข้อมูลสำเร็จ', timer: 1500, showConfirmButton: false });
                 } catch (error) { Swal.fire('ผิดพลาด', error.message, 'error'); }
             }
@@ -1472,7 +1618,7 @@
                         }
                     }
 
-                    await updateDoc(doc(db, "leave_requests", docId), { status: newStatus }); 
+                    await updateDoc(doc(db, "leave_requests", docId), { status: newStatus, notified: false }); 
                     Swal.fire({ icon: 'success', title: 'อัปเดตสถานะสำเร็จ', timer: 1000, showConfirmButton: false }); 
                 } 
                 catch (error) { Swal.fire('ผิดพลาด', error.message, 'error'); }
@@ -1492,6 +1638,7 @@
         // แอดมิน: เพิ่มพนักงาน
         document.getElementById('btn-add-employee').addEventListener('click', async () => {
             const nameInput = document.getElementById('new-emp-name'), pinInput = document.getElementById('new-emp-pin');
+            const roleInput = document.getElementById('new-emp-role');
             const dailyRateInput = document.getElementById('new-emp-daily-rate'), otRateInput = document.getElementById('new-emp-ot-rate');
             const deptInput = document.getElementById('new-emp-dept'), shiftInput = document.getElementById('new-emp-shift');
             
@@ -1504,9 +1651,13 @@
                 if (!(await getDocs(q)).empty) return Swal.fire('รหัส PIN ซ้ำ', 'รหัส PIN นี้ถูกใช้ไปแล้ว', 'error');
                 
                 const defaultQuotas = { 'ลาป่วย': 30, 'ลากิจ': 6, 'ลาพักร้อน': 6, 'อื่นๆ': 0 };
-                await addDoc(collection(db, "employees"), { name: name, pin: pin, departmentId: deptInput.value, shiftId: shiftInput.value, dailyRate: dailyRate, otRate: otRate, quotas: defaultQuotas });
+                await addDoc(collection(db, "employees"), { 
+                    name: name, pin: pin, role: roleInput.value,
+                    departmentId: deptInput.value, shiftId: shiftInput.value, 
+                    dailyRate: dailyRate, otRate: otRate, quotas: defaultQuotas 
+                });
                 Swal.fire({ icon: 'success', title: 'เพิ่มพนักงานสำเร็จ', timer: 1500, showConfirmButton: false }); 
-                nameInput.value = ''; pinInput.value = ''; deptInput.value = ''; shiftInput.value = '';
+                nameInput.value = ''; pinInput.value = ''; deptInput.value = ''; shiftInput.value = ''; roleInput.value = 'staff';
                 if(dailyRateInput) dailyRateInput.value = '';
                 if(otRateInput) otRateInput.value = '';
             } catch (error) { Swal.fire('ผิดพลาด', error.message, 'error'); }
@@ -1782,6 +1933,9 @@
                 Swal.fire({ icon: 'success', title: 'บันทึกตั้งค่าสำเร็จ', timer: 1500 });
             } catch (error) { Swal.fire('ผิดพลาด', error.message, 'error'); }
         });
+
+        // Initialize App Offline Logic on boot
+        if (!navigator.onLine) document.getElementById('offline-banner').classList.remove('hide');
 
     </script>
 </body>
