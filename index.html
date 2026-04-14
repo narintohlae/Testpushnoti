@@ -2249,16 +2249,61 @@ document.getElementById('btn-add-shift')?.addEventListener('click', async () => 
     }
 });
 
-// 6. ปุ่มเพิ่มสาขา (GPS)
+// 6. ปุ่มเพิ่มสาขา (GPS) - อัปเดตเพิ่มปุ่มดึงพิกัดอัตโนมัติ
 document.getElementById('btn-add-branch')?.addEventListener('click', async () => {
     const { value: formValues } = await Swal.fire({
         title: 'เพิ่มสาขา',
         html: '<div class="text-left"><label class="text-xs text-gray-500">ชื่อสาขา</label><input id="swal-b-name" class="w-full p-2 border rounded mb-2" placeholder="เช่น สาขาอโศก"></div>' +
               '<div class="flex gap-2"><div class="flex-1 text-left"><label class="text-xs text-gray-500">Latitude</label><input id="swal-b-lat" type="number" step="any" class="w-full p-2 border rounded mb-2" placeholder="13.xxx"></div>' +
               '<div class="flex-1 text-left"><label class="text-xs text-gray-500">Longitude</label><input id="swal-b-lng" type="number" step="any" class="w-full p-2 border rounded mb-2" placeholder="100.xxx"></div></div>' +
-              '<div class="text-left"><label class="text-xs text-gray-500">รัศมีที่อนุญาต (เมตร)</label><input id="swal-b-rad" type="number" class="w-full p-2 border rounded" placeholder="เช่น 100"></div>' +
-              '<p class="text-[10px] text-gray-400 mt-2">* ทริค: ค้นหาพิกัด Lat,Lng ได้จาก Google Maps</p>',
-        focusConfirm: false, showCancelButton: true, confirmButtonText: 'เพิ่ม',
+              // เพิ่มปุ่มดึงพิกัดตรงนี้
+              '<div class="mb-3 text-right"><button type="button" id="btn-get-location" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 py-1.5 px-3 rounded-lg transition shadow-sm font-bold"><i class="fa-solid fa-location-crosshairs mr-1"></i> ดึงพิกัดปัจจุบัน</button></div>' +
+              '<div class="text-left"><label class="text-xs text-gray-500">รัศมีที่อนุญาต (เมตร)</label><input id="swal-b-rad" type="number" class="w-full p-2 border rounded" placeholder="เช่น 100"></div>',
+        focusConfirm: false, 
+        showCancelButton: true, 
+        confirmButtonText: 'เพิ่ม',
+        // ใช้ didOpen เพื่อดักจับ Event คลิกปุ่มหลังจาก Popup แสดงขึ้นมาแล้ว
+        didOpen: () => {
+            const btnLoc = document.getElementById('btn-get-location');
+            btnLoc.addEventListener('click', () => {
+                // เปลี่ยนสถานะปุ่มตอนกำลังค้นหา
+                btnLoc.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> กำลังหาพิกัด...';
+                btnLoc.disabled = true;
+                
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            // เมื่อได้พิกัด ให้นำไปใส่ในช่อง Input อัตโนมัติ
+                            document.getElementById('swal-b-lat').value = position.coords.latitude;
+                            document.getElementById('swal-b-lng').value = position.coords.longitude;
+                            
+                            // เปลี่ยนสีปุ่มเป็นสีเขียวเพื่อแจ้งว่าสำเร็จ
+                            btnLoc.innerHTML = '<i class="fa-solid fa-check mr-1"></i> สำเร็จ';
+                            btnLoc.classList.replace('bg-blue-100', 'bg-emerald-100');
+                            btnLoc.classList.replace('text-blue-700', 'text-emerald-700');
+                            
+                            // คืนค่าปุ่มกลับเป็นเหมือนเดิมหลังผ่านไป 2 วินาที
+                            setTimeout(() => {
+                                btnLoc.innerHTML = '<i class="fa-solid fa-location-crosshairs mr-1"></i> ดึงพิกัดใหม่';
+                                btnLoc.classList.replace('bg-emerald-100', 'bg-blue-100');
+                                btnLoc.classList.replace('text-emerald-700', 'text-blue-700');
+                                btnLoc.disabled = false;
+                            }, 2000);
+                        },
+                        (error) => {
+                            Swal.showValidationMessage('ไม่สามารถดึงพิกัดได้ กรุณาตรวจสอบว่าคุณอนุญาตให้เข้าถึง Location หรือยัง');
+                            btnLoc.innerHTML = '<i class="fa-solid fa-location-crosshairs mr-1"></i> ลองดึงพิกัดใหม่';
+                            btnLoc.disabled = false;
+                        },
+                        { enableHighAccuracy: true, timeout: 10000 }
+                    );
+                } else {
+                    Swal.showValidationMessage('อุปกรณ์/เบราว์เซอร์ของคุณไม่รองรับการระบุพิกัด');
+                    btnLoc.innerHTML = '<i class="fa-solid fa-location-crosshairs mr-1"></i> ดึงพิกัดปัจจุบัน';
+                    btnLoc.disabled = false;
+                }
+            });
+        },
         preConfirm: () => {
             const name = document.getElementById('swal-b-name').value;
             const lat = document.getElementById('swal-b-lat').value;
