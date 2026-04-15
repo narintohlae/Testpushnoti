@@ -14,7 +14,7 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 👇 ระบบดักฟังข้อความตอนที่ "พับแอปเก็บไปแล้ว หรือล็อกหน้าจอ"
+// รับข้อความตอนพับแอป (Background)
 messaging.onBackgroundMessage(function(payload) {
     console.log('ได้รับข้อความจาก Firebase: ', payload);
     
@@ -22,14 +22,14 @@ messaging.onBackgroundMessage(function(payload) {
     const notificationOptions = {
         body: payload.notification.body,
         icon: 'https://via.placeholder.com/192',
-        // รองรับการส่ง URL มาจากหลังบ้าน ถ้าไม่มีให้ไป page2.html
+        // ถ้า Firebase ส่ง URL มาให้เปิดหน้านั้น ถ้าไม่มีให้ไปหน้า page2.html
         data: { url: payload.data && payload.data.url ? payload.data.url : './page2.html' } 
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// พอกดที่แถบแจ้งเตือน ให้พาไปที่ URL ที่กำหนด
+// พอกดแจ้งเตือนให้เปิดหน้าแอป
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const targetUrl = event.notification.data.url || '/';

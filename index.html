@@ -6,13 +6,55 @@
     <title>PWA Firebase Push</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; background-color: #f0f0f0; }
-        button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 8px; border: none; cursor: pointer; background-color: #007aff; color: white; }
-        #token-display { margin-top: 20px; padding: 15px; background: #fff; border-radius: 8px; word-break: break-all; font-size: 14px; color: #333; display: none; border: 1px solid #ccc;}
+        /* สไตล์สำหรับเนื้อหาทั่วไป */
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            padding: 50px 20px; 
+            background-color: #f2f2f7; /* สีพื้นหลังสไตล์ iOS */
+            margin: 0;
+            padding-bottom: 90px; /* เว้นที่ให้แถบเมนูด้านล่าง */
+        }
+        button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 12px; border: none; cursor: pointer; background-color: #007aff; color: white; font-weight: bold; }
+        #token-display { margin-top: 20px; padding: 15px; background: #fff; border-radius: 12px; word-break: break-all; font-size: 14px; color: #333; display: none; border: 1px solid #ccc;}
+        
+        /* สไตล์สำหรับแถบเมนูด้านล่าง (Bottom Navigation) */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: env(safe-area-inset-bottom); /* หลบขีด Home ของ iOS */
+            padding-top: 10px;
+            z-index: 1000;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #8e8e93; /* สีเทาสำหรับเมนูที่ไม่ได้เลือก */
+            font-size: 10px;
+            font-weight: 500;
+        }
+        .nav-item.active {
+            color: #007aff; /* สีฟ้าสำหรับหน้าปัจจุบัน */
+        }
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
-    <h1>ทดสอบ Firebase FCM 🚀</h1>
+    <h1>ทดสอบแอปเต็มรูปแบบ 🚀</h1>
     <p id="status">สถานะ: รอการอนุญาต</p>
     <button id="btn-permission">ขออนุญาตแจ้งเตือน</button>
 
@@ -37,7 +79,7 @@
         const messaging = getMessaging(app);
         const vapidKey = "BDNGswO_-C1zLdkCtXs7GEqf4mzS6oDVVT4MVwEmgK1M4acf-0fk-FzSa-wYaTUa-wg_3eLK2_TFFytdqz1WBYo";
 
-        // 👇 ระบบดักฟังข้อความตอนที่ "กำลังเปิดแอปค้างไว้"
+        // รับข้อความตอนเปิดแอปอยู่ (Foreground)
         onMessage(messaging, (payload) => {
             console.log('ได้รับข้อความขณะเปิดแอป: ', payload);
             alert(`🔔 แจ้งเตือนใหม่!\nหัวข้อ: ${payload.notification.title}\nข้อความ: ${payload.notification.body}`);
@@ -47,21 +89,17 @@
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    document.getElementById('status').innerText = "กำลังลงทะเบียน Service Worker...";
+                    document.getElementById('status').innerText = "กำลังเชื่อมต่อระบบ...";
                     
-                    // บังคับระบุที่อยู่ไฟล์ Service Worker
                     const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                     
-                    document.getElementById('status').innerText = "กำลังดึงข้อมูลจาก Firebase...";
-                    
-                    // ขอ Token
                     const currentToken = await getToken(messaging, { 
                         vapidKey: vapidKey,
                         serviceWorkerRegistration: registration 
                     });
                     
                     if (currentToken) {
-                        document.getElementById('status').innerText = "เชื่อมต่อสำเร็จ! ✅ คัดลอก Token ด้านล่างไปใช้ได้เลย";
+                        document.getElementById('status').innerText = "พร้อมใช้งาน! ✅ นำ Token ไปทดสอบได้เลย";
                         const tokenBox = document.getElementById('token-display');
                         tokenBox.style.display = 'block';
                         tokenBox.innerText = currentToken;
@@ -76,5 +114,24 @@
             }
         });
     </script>
+
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item active">
+            <span class="nav-icon">🏠</span>
+            <span>หน้าแรก</span>
+        </a>
+        <a href="page2.html" class="nav-item">
+            <span class="nav-icon">💬</span>
+            <span>แชท</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">🔔</span>
+            <span>แจ้งเตือน</span>
+        </a>
+        <a href="#" class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span>ตั้งค่า</span>
+        </a>
+    </nav>
 </body>
 </html>

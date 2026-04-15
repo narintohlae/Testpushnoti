@@ -1,6 +1,6 @@
 {
-  "name": "PWA Notify Test",
-  "short_name": "NotifyTest",
+  "name": "Time Tracker PWA",
+  "short_name": "TimeTracker",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
