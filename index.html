@@ -2,136 +2,222 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PWA Firebase Push</title>
-    <link rel="manifest" href="manifest.json">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบลงเวลาเข้า-ออกงาน (Ultimate)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* สไตล์สำหรับเนื้อหาทั่วไป */
-        body { 
-            font-family: sans-serif; 
-            text-align: center; 
-            padding: 50px 20px; 
-            background-color: #f2f2f7; /* สีพื้นหลังสไตล์ iOS */
-            margin: 0;
-            padding-bottom: 90px; /* เว้นที่ให้แถบเมนูด้านล่าง */
-        }
-        button { padding: 15px 30px; font-size: 18px; margin: 10px; border-radius: 12px; border: none; cursor: pointer; background-color: #007aff; color: white; font-weight: bold; }
-        #token-display { margin-top: 20px; padding: 15px; background: #fff; border-radius: 12px; word-break: break-all; font-size: 14px; color: #333; display: none; border: 1px solid #ccc;}
-        
-        /* สไตล์สำหรับแถบเมนูด้านล่าง (Bottom Navigation) */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background-color: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding-bottom: env(safe-area-inset-bottom); /* หลบขีด Home ของ iOS */
-            padding-top: 10px;
-            z-index: 1000;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            color: #8e8e93; /* สีเทาสำหรับเมนูที่ไม่ได้เลือก */
-            font-size: 10px;
-            font-weight: 500;
-        }
-        .nav-item.active {
-            color: #007aff; /* สีฟ้าสำหรับหน้าปัจจุบัน */
-        }
-        .nav-icon {
-            font-size: 24px;
-            margin-bottom: 4px;
+        body {
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
     </style>
 </head>
-<body>
-    <h1>ทดสอบแอปเต็มรูปแบบ 🚀</h1>
-    <p id="status">สถานะ: รอการอนุญาต</p>
-    <button id="btn-permission">ขออนุญาตแจ้งเตือน</button>
+<body class="bg-gray-100 dark:bg-gray-900 h-screen flex flex-col items-center p-4 font-sans transition-colors duration-300">
 
-    <div id="token-display"></div>
+    <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 mt-2 text-center transition-colors duration-300">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">ระบบลงเวลาทำงาน</h1>
+        <p class="text-gray-500 dark:text-gray-400 mt-1" id="currentDate">กำลังโหลดวันที่...</p>
+        <div class="text-5xl font-mono font-bold text-blue-600 dark:text-blue-400 mt-4" id="currentTime">00:00:00</div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+    <div class="w-full max-w-md mt-6 flex flex-col items-center">
+        <button id="actionBtn" onclick="handleAction()" 
+            class="w-48 h-48 rounded-full text-white text-3xl font-bold shadow-lg transition-transform transform active:scale-95 flex flex-col items-center justify-center bg-green-500 hover:bg-green-600">
+            <span id="btnText">เข้างาน</span>
+            <span id="btnSubText" class="text-sm font-normal mt-2 opacity-80">กดเพื่อบันทึกเวลา</span>
+        </button>
+        
+        <div class="w-full mt-6 px-4">
+            <input type="text" id="noteInput" placeholder="เพิ่มหมายเหตุ (เช่น เข้าสาย, สรุปงาน)..." 
+                class="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
+        </div>
 
-        // Config ของคุณ
-        const firebaseConfig = {
-            apiKey: "AIzaSyAgTWrI1G1t3GYVz4-SPM7btrsixSe0el8",
-            authDomain: "time-tracker-46283.firebaseapp.com",
-            projectId: "time-tracker-46283",
-            storageBucket: "time-tracker-46283.firebasestorage.app",
-            messagingSenderId: "882533547295",
-            appId: "1:882533547295:web:4b78bfc84322c58a50042a",
-            measurementId: "G-5DPBNCSWFW"
-        };
+        <div id="timerContainer" class="mt-4 text-center hidden">
+            <p class="text-sm text-gray-500 dark:text-gray-400">เวลาทำงานรอบปัจจุบัน</p>
+            <p class="text-2xl font-mono font-bold text-gray-800 dark:text-gray-100" id="liveTimer">00:00:00</p>
+            <p id="forgotWarning" class="text-xs text-red-500 font-bold mt-1 hidden">⚠️ คุณลืมกดออกงานหรือเปล่า?</p>
+        </div>
 
-        const app = initializeApp(firebaseConfig);
-        const messaging = getMessaging(app);
-        const vapidKey = "BDNGswO_-C1zLdkCtXs7GEqf4mzS6oDVVT4MVwEmgK1M4acf-0fk-FzSa-wYaTUa-wg_3eLK2_TFFytdqz1WBYo";
+        <p id="locationStatus" class="mt-4 text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full shadow-sm">
+            📍 กำลังตรวจสอบตำแหน่ง...
+        </p>
+    </div>
 
-        // รับข้อความตอนเปิดแอปอยู่ (Foreground)
-        onMessage(messaging, (payload) => {
-            console.log('ได้รับข้อความขณะเปิดแอป: ', payload);
-            alert(`🔔 แจ้งเตือนใหม่!\nหัวข้อ: ${payload.notification.title}\nข้อความ: ${payload.notification.body}`);
-        });
+    <div class="w-full max-w-md mt-6 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex-grow mb-4 overflow-hidden flex flex-col transition-colors duration-300">
+        <div class="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
+            <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100">ประวัติการลงเวลา</h2>
+            <button onclick="exportCSV()" class="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 font-bold transition-colors">
+                📥 โหลดไฟล์ส่ง HR
+            </button>
+        </div>
+        <div id="logHistory" class="overflow-y-auto flex-grow space-y-3 pr-2">
+            </div>
+    </div>
 
-        document.getElementById('btn-permission').addEventListener('click', async () => {
-            try {
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    document.getElementById('status').innerText = "กำลังเชื่อมต่อระบบ...";
-                    
-                    const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    
-                    const currentToken = await getToken(messaging, { 
-                        vapidKey: vapidKey,
-                        serviceWorkerRegistration: registration 
-                    });
-                    
-                    if (currentToken) {
-                        document.getElementById('status').innerText = "พร้อมใช้งาน! ✅ นำ Token ไปทดสอบได้เลย";
-                        const tokenBox = document.getElementById('token-display');
-                        tokenBox.style.display = 'block';
-                        tokenBox.innerText = currentToken;
-                    } else {
-                        document.getElementById('status').innerText = "ไม่สามารถสร้าง Token ได้";
-                    }
+    <script>
+        let isCheckedIn = false;
+        let checkInTimeMs = null;
+        let logs = JSON.parse(localStorage.getItem('timeLogs')) || [];
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
+            document.getElementById('currentDate').innerText = now.toLocaleDateString('th-TH', { 
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            });
+
+            if (isCheckedIn && checkInTimeMs) {
+                const diff = now.getTime() - checkInTimeMs;
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                
+                document.getElementById('liveTimer').innerText = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // แจ้งเตือนถ้าเวลาเกิน 12 ชั่วโมง (ลืมกดออกงาน)
+                if (hours >= 12) {
+                    document.getElementById('forgotWarning').classList.remove('hidden');
                 } else {
-                    document.getElementById('status').innerText = "สถานะ: ปฏิเสธการแจ้งเตือน ❌";
+                    document.getElementById('forgotWarning').classList.add('hidden');
                 }
-            } catch (err) {
-                document.getElementById('status').innerText = "เกิดข้อผิดพลาด: " + err.message;
             }
-        });
-    </script>
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
-    <nav class="bottom-nav">
-        <a href="index.html" class="nav-item active">
-            <span class="nav-icon">🏠</span>
-            <span>หน้าแรก</span>
-        </a>
-        <a href="page2.html" class="nav-item">
-            <span class="nav-icon">💬</span>
-            <span>แชท</span>
-        </a>
-        <a href="#" class="nav-item">
-            <span class="nav-icon">🔔</span>
-            <span>แจ้งเตือน</span>
-        </a>
-        <a href="#" class="nav-item">
-            <span class="nav-icon">⚙️</span>
-            <span>ตั้งค่า</span>
-        </a>
-    </nav>
+        function initApp() {
+            if (logs.length > 0) {
+                const lastLog = logs[0];
+                if (lastLog.type === 'เข้างาน') {
+                    isCheckedIn = true;
+                    checkInTimeMs = lastLog.id;
+                }
+            }
+            updateButtonUI();
+            renderLogs();
+            checkLocation();
+        }
+
+        function checkLocation() {
+            const statusText = document.getElementById('locationStatus');
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    () => { statusText.innerText = "📍 อยู่ในพื้นที่ (พร้อมลงเวลา)"; statusText.classList.replace('text-gray-500', 'text-green-600'); },
+                    () => { statusText.innerText = "⚠️ ไม่สามารถระบุตำแหน่งได้"; statusText.classList.replace('text-gray-500', 'text-red-500'); }
+                );
+            }
+        }
+
+        function handleAction() {
+            const noteInput = document.getElementById('noteInput');
+            const noteText = noteInput.value.trim() || "-";
+
+            if (isCheckedIn) {
+                const confirmOut = confirm("คุณต้องการ 'ลงเวลาออกงาน' ใช่หรือไม่?");
+                if (!confirmOut) return;
+            }
+
+            const now = new Date();
+            const newLog = {
+                id: now.getTime(),
+                date: now.toLocaleDateString('th-TH'),
+                time: now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                type: isCheckedIn ? 'ออกงาน' : 'เข้างาน',
+                note: noteText
+            };
+
+            logs.unshift(newLog);
+            localStorage.setItem('timeLogs', JSON.stringify(logs));
+
+            if (!isCheckedIn) {
+                checkInTimeMs = newLog.id;
+            } else {
+                checkInTimeMs = null;
+            }
+
+            isCheckedIn = !isCheckedIn;
+            noteInput.value = ''; // ล้างช่องหมายเหตุ
+            updateButtonUI();
+            renderLogs();
+        }
+
+        function updateButtonUI() {
+            const btn = document.getElementById('actionBtn');
+            const btnText = document.getElementById('btnText');
+            const timerContainer = document.getElementById('timerContainer');
+            
+            if (isCheckedIn) {
+                btn.classList.replace('bg-green-500', 'bg-red-500');
+                btn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+                btnText.innerText = 'ออกงาน';
+                timerContainer.classList.remove('hidden');
+            } else {
+                btn.classList.replace('bg-red-500', 'bg-green-500');
+                btn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+                btnText.innerText = 'เข้างาน';
+                timerContainer.classList.add('hidden');
+                document.getElementById('forgotWarning').classList.add('hidden');
+            }
+        }
+
+        function renderLogs() {
+            const logContainer = document.getElementById('logHistory');
+            logContainer.innerHTML = '';
+            if (logs.length === 0) {
+                logContainer.innerHTML = '<p class="text-center text-gray-400 dark:text-gray-500 mt-4">ยังไม่มีประวัติการลงเวลา</p>';
+                return;
+            }
+            logs.slice(0, 10).forEach(log => {
+                const isCheckIn = log.type === 'เข้างาน';
+                const colorClass = isCheckIn 
+                    ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800' 
+                    : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800';
+                
+                const noteHtml = log.note !== "-" 
+                    ? `<div class="w-full mt-2 text-xs text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700">📝 ${log.note}</div>` 
+                    : '';
+
+                logContainer.innerHTML += `
+                    <div class="flex flex-col p-3 rounded-lg border ${colorClass}">
+                        <div class="flex justify-between items-center w-full">
+                            <div class="flex flex-col">
+                                <span class="font-bold">${log.type}</span>
+                                <span class="text-xs opacity-70">${log.date}</span>
+                            </div>
+                            <div class="font-mono font-bold text-lg">${log.time}</div>
+                        </div>
+                        ${noteHtml}
+                    </div>
+                `;
+            });
+        }
+
+        function exportCSV() {
+            if (logs.length === 0) {
+                alert("ยังไม่มีข้อมูลให้ดาวน์โหลดครับ");
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            csvContent += "วันที่,เวลา,ประเภทการลงเวลา,หมายเหตุ\n"; 
+            
+            logs.forEach(log => {
+                // ป้องกันปัญหาเครื่องหมายลูกน้ำ (comma) ในข้อความหมายเหตุ
+                const safeNote = `"${log.note.replace(/"/g, '""')}"`;
+                csvContent += `${log.date},${log.time},${log.type},${safeNote}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "ประวัติการลงเวลา_มีหมายเหตุ.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        initApp();
+    </script>
 </body>
 </html>
