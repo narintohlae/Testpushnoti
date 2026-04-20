@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบลงเวลาเข้า-ออกงาน</title>
+    <title>ระบบลงเวลาเข้า-ออกงาน (Pro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ป้องกันการคลุมดำข้อความบนมือถือเพื่อให้รู้สึกเหมือนแอป */
         body {
             -webkit-user-select: none;
             user-select: none;
@@ -16,7 +15,7 @@
 </head>
 <body class="bg-gray-100 h-screen flex flex-col items-center p-4 font-sans">
 
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm p-6 mt-4 text-center">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-sm p-6 mt-2 text-center relative">
         <h1 class="text-2xl font-bold text-gray-800">ระบบลงเวลาทำงาน</h1>
         <p class="text-gray-500 mt-1" id="currentDate">กำลังโหลดวันที่...</p>
         <div class="text-5xl font-mono font-bold text-blue-600 mt-4" id="currentTime">00:00:00</div>
@@ -29,42 +28,57 @@
             <span id="btnSubText" class="text-sm font-normal mt-2 opacity-80">กดเพื่อบันทึกเวลา</span>
         </button>
         
-        <p id="locationStatus" class="mt-6 text-sm text-gray-500 bg-white px-4 py-2 rounded-full shadow-sm">
+        <div id="timerContainer" class="mt-6 text-center hidden">
+            <p class="text-sm text-gray-500">เวลาทำงานรอบปัจจุบัน</p>
+            <p class="text-2xl font-mono font-bold text-gray-800" id="liveTimer">00:00:00</p>
+        </div>
+
+        <p id="locationStatus" class="mt-4 text-xs text-gray-500 bg-white px-3 py-1 rounded-full shadow-sm">
             📍 กำลังตรวจสอบตำแหน่ง...
         </p>
     </div>
 
-    <div class="w-full max-w-md mt-8 bg-white rounded-2xl shadow-sm p-6 flex-grow mb-4 overflow-hidden flex flex-col">
-        <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">ประวัติการลงเวลา 5 วันล่าสุด</h2>
+    <div class="w-full max-w-md mt-6 bg-white rounded-2xl shadow-sm p-6 flex-grow mb-4 overflow-hidden flex flex-col">
+        <div class="flex justify-between items-center mb-4 border-b pb-2">
+            <h2 class="text-lg font-bold text-gray-800">ประวัติการลงเวลา</h2>
+            <button onclick="exportCSV()" class="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full hover:bg-blue-200 font-bold">
+                📥 โหลดไฟล์ส่ง HR
+            </button>
+        </div>
         <div id="logHistory" class="overflow-y-auto flex-grow space-y-3">
             </div>
     </div>
 
     <script>
-        // ตัวแปรสถานะ
         let isCheckedIn = false;
+        let checkInTimeMs = null;
         let logs = JSON.parse(localStorage.getItem('timeLogs')) || [];
 
-        // 1. ระบบนาฬิกาเรียลไทม์
         function updateClock() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { hour12: false });
-            const dateString = now.toLocaleDateString('th-TH', { 
+            document.getElementById('currentTime').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
+            document.getElementById('currentDate').innerText = now.toLocaleDateString('th-TH', { 
                 weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
             });
-            document.getElementById('currentTime').innerText = timeString;
-            document.getElementById('currentDate').innerText = dateString;
+
+            // อัปเดตตัวจับเวลาทำงาน (ถ้าเข้างานอยู่)
+            if (isCheckedIn && checkInTimeMs) {
+                const diff = now.getTime() - checkInTimeMs;
+                const hours = Math.floor(diff / (1000 * 60 * 60)).toString().padStart(2, '0');
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000).toString().padStart(2, '0');
+                document.getElementById('liveTimer').innerText = `${hours}:${minutes}:${seconds}`;
+            }
         }
         setInterval(updateClock, 1000);
         updateClock();
 
-        // 2. ตรวจสอบสถานะเริ่มต้น (ดึงจาก LocalStorage)
         function initApp() {
             if (logs.length > 0) {
-                // เช็คว่ารายการล่าสุดคือการ "เข้างาน" (ยังไม่ออก) หรือไม่
                 const lastLog = logs[0];
                 if (lastLog.type === 'เข้างาน') {
                     isCheckedIn = true;
+                    checkInTimeMs = lastLog.id; // ใช้ timestamp ของตอนที่กดเข้างาน
                 }
             }
             updateButtonUI();
@@ -72,100 +86,107 @@
             checkLocation();
         }
 
-        // 3. ระบบเช็คพิกัด GPS (Geofencing แบบจำลอง)
         function checkLocation() {
             const statusText = document.getElementById('locationStatus');
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // ในระบบจริง จะเอา position.coords.latitude/longitude ไปเทียบพิกัดออฟฟิศ
-                        statusText.innerText = "📍 อยู่ในพื้นที่ทำงาน (พร้อมลงเวลา)";
-                        statusText.classList.replace('text-gray-500', 'text-green-600');
-                    },
-                    (error) => {
-                        statusText.innerText = "⚠️ ไม่สามารถระบุตำแหน่งได้";
-                        statusText.classList.replace('text-gray-500', 'text-red-500');
-                    }
+                    () => { statusText.innerText = "📍 อยู่ในพื้นที่ (พร้อมลงเวลา)"; statusText.classList.replace('text-gray-500', 'text-green-600'); },
+                    () => { statusText.innerText = "⚠️ ไม่สามารถระบุตำแหน่งได้"; statusText.classList.replace('text-gray-500', 'text-red-500'); }
                 );
-            } else {
-                statusText.innerText = "❌ อุปกรณ์ไม่รองรับ GPS";
             }
         }
 
-        // 4. จัดการเมื่อกดปุ่ม (เข้างาน / ออกงาน)
         function handleAction() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-            const dateString = now.toLocaleDateString('th-TH');
+            if (isCheckedIn) {
+                // ป้องกันการเผลอกดออกงาน
+                const confirmOut = confirm("คุณต้องการ 'ลงเวลาออกงาน' ใช่หรือไม่?");
+                if (!confirmOut) return;
+            }
 
+            const now = new Date();
             const newLog = {
-                id: Date.now(),
-                date: dateString,
-                time: timeString,
+                id: now.getTime(),
+                date: now.toLocaleDateString('th-TH'),
+                time: now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
                 type: isCheckedIn ? 'ออกงาน' : 'เข้างาน'
             };
 
-            // บันทึกข้อมูลลง Array และ LocalStorage
-            logs.unshift(newLog); // เพิ่มข้อมูลใหม่ไปบนสุด
+            logs.unshift(newLog);
             localStorage.setItem('timeLogs', JSON.stringify(logs));
 
-            // สลับสถานะ
+            if (!isCheckedIn) {
+                checkInTimeMs = newLog.id;
+            } else {
+                checkInTimeMs = null;
+            }
+
             isCheckedIn = !isCheckedIn;
-            
             updateButtonUI();
             renderLogs();
         }
 
-        // 5. อัปเดตหน้าตาปุ่ม (Dynamic Button)
         function updateButtonUI() {
             const btn = document.getElementById('actionBtn');
             const btnText = document.getElementById('btnText');
+            const timerContainer = document.getElementById('timerContainer');
             
             if (isCheckedIn) {
-                // เปลี่ยนเป็นปุ่มออกงาน (สีแดง)
                 btn.classList.replace('bg-green-500', 'bg-red-500');
                 btn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
                 btnText.innerText = 'ออกงาน';
+                timerContainer.classList.remove('hidden');
             } else {
-                // เปลี่ยนเป็นปุ่มเข้างาน (สีเขียว)
                 btn.classList.replace('bg-red-500', 'bg-green-500');
                 btn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
                 btnText.innerText = 'เข้างาน';
+                timerContainer.classList.add('hidden');
             }
         }
 
-        // 6. แสดงผลประวัติ (Quick Dashboard)
         function renderLogs() {
             const logContainer = document.getElementById('logHistory');
-            logContainer.innerHTML = ''; // ล้างค่าเก่า
-
+            logContainer.innerHTML = '';
             if (logs.length === 0) {
                 logContainer.innerHTML = '<p class="text-center text-gray-400 mt-4">ยังไม่มีประวัติการลงเวลา</p>';
                 return;
             }
-
-            // แสดงแค่ 10 รายการล่าสุด
-            const displayLogs = logs.slice(0, 10);
-
-            displayLogs.forEach(log => {
-                const colorClass = log.type === 'เข้างาน' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50';
-                
-                const logItem = `
-                    <div class="flex justify-between items-center p-3 rounded-lg border border-gray-100 ${colorClass}">
+            logs.slice(0, 10).forEach(log => {
+                const colorClass = log.type === 'เข้างาน' ? 'text-green-600 bg-green-50 border-green-100' : 'text-red-600 bg-red-50 border-red-100';
+                logContainer.innerHTML += `
+                    <div class="flex justify-between items-center p-3 rounded-lg border ${colorClass}">
                         <div class="flex flex-col">
                             <span class="font-bold">${log.type}</span>
                             <span class="text-xs text-gray-500">${log.date}</span>
                         </div>
-                        <div class="font-mono font-bold text-lg">
-                            ${log.time}
-                        </div>
+                        <div class="font-mono font-bold text-lg">${log.time}</div>
                     </div>
                 `;
-                logContainer.innerHTML += logItem;
             });
         }
 
-        // เริ่มต้นแอป
+        // ฟังก์ชันสร้างไฟล์ CSV และดาวน์โหลด
+        function exportCSV() {
+            if (logs.length === 0) {
+                alert("ยังไม่มีข้อมูลให้ดาวน์โหลดครับ");
+                return;
+            }
+            // ใส่ BOM เพื่อให้ Excel อ่านภาษาไทยได้ถูกต้อง
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
+            csvContent += "วันที่,เวลา,ประเภทการลงเวลา\n"; // หัวตาราง
+            
+            logs.forEach(log => {
+                csvContent += `${log.date},${log.time},${log.type}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "ประวัติการลงเวลา.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         initApp();
     </script>
 </body>
