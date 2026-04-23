@@ -189,10 +189,18 @@
             "Profile": "โปรไฟล์", "Manage your account": "จัดการบัญชีของคุณ",
             "Please fill all required fields": "กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน",
             "Action completed successfully": "ดำเนินการเสร็จสิ้น",
-            "Feature coming soon!": "ฟีเจอร์นี้กำลังจะมาในเร็วๆ นี้!"
+            "Feature coming soon!": "ฟีเจอร์นี้กำลังจะมาในเร็วๆ นี้!",
+            "Coffee Chats": "คอฟฟี่แชท", "Randomly pair with coworkers for a quick chat.": "สุ่มจับคู่กับเพื่อนร่วมงานเพื่อพูดคุยทำความรู้จัก",
+            "Your Match This Week": "คู่ของคุณสัปดาห์นี้", "Opt-in for Next Week": "เข้าร่วมในสัปดาห์หน้า", 
+            "Opt-out": "ยกเลิกการเข้าร่วม", "Active Pairs": "คู่ที่จับแล้ว", "You're on the list!": "คุณอยู่ในรายชื่อแล้ว!", 
+            "No match this week.": "ไม่มีคู่ในสัปดาห์นี้", "Say Hello": "ทักทาย",
+            "Skill Exchange": "แลกเปลี่ยนทักษะ", "Teach or learn new skills with coworkers.": "สอนหรือเรียนรู้ทักษะใหม่ๆ กับเพื่อนร่วมงาน",
+            "I want to teach": "ฉันต้องการสอน", "I want to learn": "ฉันต้องการเรียน", "Skill (e.g., Python, Public Speaking)": "ทักษะ (เช่น Python, การพูดในที่สาธารณะ)",
+            "Post Skill": "ลงประกาศทักษะ", "Teaching": "สอน", "Learning": "เรียนรู้"
         };
         function t(str) { return (state.lang === 'th' && i18n_th[str]) ? i18n_th[str] : str; }
 
+        // Production ID Generator
         function generateId() {
             return window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
         }
@@ -215,7 +223,7 @@
         const state = {
             lang: 'en', currentUser: null, currentView: 'login', currentModuleId: null, isInitialized: false, configDocId: null,
             features: {
-                timeClock: true, taskManager: true, timeOff: true, announcements: true, expenses: true, kudos: true, moodTracker: true, helpDesk: true, suggestions: true, polls: true, events: true, directory: true, goals: true, resources: true, bookings: true, visitors: true, cafeteria: true, equipment: true, rewards: true, lostFound: true, shiftSwap: true, carpool: true, wellness: true, jukebox: true, standups: true, marketplace: true, celebrations: true, training: true, workLocation: true, referrals: true
+                timeClock: true, taskManager: true, timeOff: true, announcements: true, expenses: true, kudos: true, moodTracker: true, helpDesk: true, suggestions: true, polls: true, events: true, directory: true, goals: true, resources: true, bookings: true, visitors: true, cafeteria: true, equipment: true, rewards: true, lostFound: true, shiftSwap: true, carpool: true, wellness: true, jukebox: true, standups: true, marketplace: true, celebrations: true, training: true, workLocation: true, referrals: true, coffeeChats: true, skillExchange: true // NEW: Skill Exchange
             }
         };
 
@@ -227,7 +235,7 @@
             ]
         };
 
-        const dynamicCollections = ['appConfig', 'logs', 'tasks', 'timeOffRequests', 'announcements', 'expenses', 'kudos', 'moods', 'tickets', 'suggestions', 'polls', 'events', 'goals', 'resources', 'bookings', 'visitors', 'menuItems', 'lunchOrders', 'inventory', 'loans', 'userPoints', 'rewardItems', 'redemptions', 'lostFound', 'shifts', 'carpools', 'wellness', 'jukebox', 'standups', 'marketplace', 'celebrations', 'courses', 'trainingLogs', 'workLocations', 'openRoles', 'referrals'];
+        const dynamicCollections = ['appConfig', 'logs', 'tasks', 'timeOffRequests', 'announcements', 'expenses', 'kudos', 'moods', 'tickets', 'suggestions', 'polls', 'events', 'goals', 'resources', 'bookings', 'visitors', 'menuItems', 'lunchOrders', 'inventory', 'loans', 'userPoints', 'rewardItems', 'redemptions', 'lostFound', 'shifts', 'carpools', 'wellness', 'jukebox', 'standups', 'marketplace', 'celebrations', 'courses', 'trainingLogs', 'workLocations', 'openRoles', 'referrals', 'coffeeMatches', 'coffeeOptIns', 'skills'];
         dynamicCollections.forEach(c => db[c] = []);
 
         let DB = { add: async () => {}, update: async () => {}, delete: async () => {} };
@@ -294,7 +302,9 @@
                     { coll: 'openRoles', data: [ { title: 'Senior Frontend Dev', dept: 'Engineering', bonus: '฿10,000' }, { title: 'Marketing Manager', dept: 'Marketing', bonus: '฿5,000' } ] },
                     { coll: 'goals', data: [ { title: 'Q2 Revenue Target', current: 15000, target: 50000, unit: '$', prefix: true, color: 'bg-emerald-500' } ] },
                     { coll: 'resources', data: [ { title: 'Employee Handbook', category: 'HR', icon: 'ph-book-open', color: 'text-blue-500' } ] },
-                    { coll: 'celebrations', data: [ { userId: 'u2', type: 'birthday', title: 'Birthday', dateStr: 'May 15', cheers: [] }, { userId: 'u1', type: 'anniversary', title: 'Anniversary', dateStr: 'May 2', cheers: [] } ] }
+                    { coll: 'celebrations', data: [ { userId: 'u2', type: 'birthday', title: 'Birthday', dateStr: 'May 15', cheers: [] }, { userId: 'u1', type: 'anniversary', title: 'Anniversary', dateStr: 'May 2', cheers: [] } ] },
+                    { coll: 'coffeeMatches', data: [ { u1: 'u1', u2: 'u2' } ] },
+                    { coll: 'skills', data: [ { userId: 'u3', type: 'teach', skill: 'Leadership & Management', date: new Date().toISOString() }, { userId: 'u2', type: 'learn', skill: 'React JS', date: new Date().toISOString() } ] }
                 ];
                 for (let s of toSeed) {
                     if (db[s.coll].length === 0) {
@@ -478,7 +488,7 @@
         function formatTime(isoStr) { return new Date(isoStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
         // =========================================
-        // FULL MODULE DEFINITIONS (1-30)
+        // FULL MODULE DEFINITIONS (1-32)
         // =========================================
 
         const TimeTrackerModule = { 
@@ -775,7 +785,7 @@
                 let html = `<div class="space-y-6 pb-20 max-w-7xl mx-auto w-full"><div><h2 class="text-2xl font-bold">${t("Cafeteria")}</h2><p class="text-gray-500 text-sm">${t("Today's Menu")}</p></div>`;
                 if(myOrder) { 
                     const it = db.menuItems.find(m=>m.id===myOrder.itemId); 
-                    html += `<div class="card-3d p-10 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 text-center relative overflow-hidden max-w-2xl mx-auto"><div class="absolute -right-6 -top-6 text-9xl opacity-10 transform rotate-12">${it.emoji}</div><div class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-4">${t("Your Order")}</div><div class="text-7xl mb-4 relative z-10">${it.emoji}</div><div class="font-bold text-2xl text-gray-800 mb-8 relative z-10">${it.name.split(' / ')[state.lang === 'th' ? 1 : 0] || it.name}</div><button onclick="CafeteriaModule.cancel('${myOrder.id}')" class="btn-sm-3d py-3 px-8 bg-white text-rose-500 border-gray-200 relative z-10 mx-auto block text-sm">${t("Cancel Order")}</button></div>`; 
+                    html += `<div class="card-3d p-10 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100 text-center relative overflow-hidden max-w-2xl mx-auto"><div class="absolute -right-6 -top-6 text-9xl opacity-10 transform rotate-12">${it.emoji}</div><div class="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-4">${t("Your Order")}</div><div class="text-7xl mb-4 relative z-10">${it.emoji}</div><div class="font-bold text-2xl text-gray-800 mb-8 relative z-10">${it.name.split(' / ')[state.lang === 'th' ? 1 : 0] || it.name}</div><button onclick="CafeteriaModule.cancel('${myOrder.id}')" class="btn-sm-3d py-3 px-8 bg-white text-rose-500 border-gray-200 relative z-10 mx-auto block text-sm">${t("Cancel Order")}</button></div>`; 
                 } 
                 else { 
                     html += `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">`; 
@@ -1088,6 +1098,170 @@
             renderAdminWidget: function() { return `<div class="card-3d p-4 bg-emerald-50/50 border-emerald-100"><h3 class="font-bold text-sm text-emerald-800 flex items-center gap-2"><i class="ph-fill ph-handshake text-emerald-500"></i> ${t("Referrals")}</h3><div class="flex-1 flex items-center justify-center"><p class="text-2xl font-bold text-emerald-600">${db.referrals.length} <span class="text-xs font-medium text-emerald-700/60 uppercase tracking-wider block">Active</span></p></div></div>`; }
         };
 
+        const CoffeeChatsModule = {
+            id: 'coffeeChats', name: 'Coffee Chats', description: 'Randomly pair with coworkers for a quick chat.', icon: 'ph-coffee', hasUserTab: true,
+            renderUserView: function() {
+                const myMatch = db.coffeeMatches.find(m => m.u1 === state.currentUser.id || m.u2 === state.currentUser.id);
+                const optInRecord = db.coffeeOptIns.find(o => o.userId === state.currentUser.id);
+                const isOptedIn = !!optInRecord;
+                
+                let partner = null;
+                if (myMatch) {
+                    const partnerId = myMatch.u1 === state.currentUser.id ? myMatch.u2 : myMatch.u1;
+                    partner = db.users.find(u => u.id === partnerId);
+                }
+
+                let html = `
+                    <div class="space-y-6 pb-20 max-w-7xl mx-auto w-full">
+                        <div>
+                            <h2 class="text-2xl font-bold">${t("Coffee Chats")}</h2>
+                            <p class="text-gray-500 text-sm">${t("Randomly pair with coworkers for a quick chat.")}</p>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-gray-400 uppercase tracking-wider text-[11px] mb-4 ml-1">${t("Your Match This Week")}</h3>
+                `;
+
+                if (partner) {
+                    html += `
+                        <div class="card-3d p-8 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 max-w-2xl">
+                            <div class="flex flex-col items-center text-center">
+                                <div class="flex items-center justify-center gap-4 mb-5">
+                                    <div class="w-16 h-16 rounded-full ${state.currentUser.color} flex items-center justify-center text-xl font-bold shadow-md border-4 border-white z-10">${state.currentUser.initials}</div>
+                                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-500 -mx-6 z-0"><i class="ph-bold ph-coffee text-lg"></i></div>
+                                    <div class="w-16 h-16 rounded-full ${partner.color} flex items-center justify-center text-xl font-bold shadow-md border-4 border-white z-10">${partner.initials}</div>
+                                </div>
+                                <h4 class="font-bold text-2xl text-gray-800 mb-1">${partner.name}</h4>
+                                <p class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-6">${t(partner.role)}</p>
+                                <a href="mailto:${partner.email}?subject=Coffee Chat ☕" class="btn-3d w-full py-3.5 bg-amber-500 text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 font-bold text-sm">
+                                    <i class="ph-bold ph-paper-plane-tilt text-lg"></i> ${t("Say Hello")}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html += `<p class="text-center text-gray-400 py-8 text-sm bg-white rounded-2xl border border-gray-100 border-dashed max-w-2xl">${t("No match this week.")}</p>`;
+                }
+
+                html += `
+                        </div>
+                        <div class="mt-8 max-w-2xl">
+                            <h3 class="font-bold text-gray-400 uppercase tracking-wider text-[11px] mb-4 ml-1">${t("Opt-in for Next Week")}</h3>
+                            <div class="card-3d p-5 bg-white border border-gray-100 flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-full ${isOptedIn ? 'bg-emerald-50 text-emerald-500' : 'bg-gray-50 text-gray-400'} flex items-center justify-center transition-colors">
+                                        <i class="ph-fill ${isOptedIn ? 'ph-check-circle' : 'ph-coffee'} text-2xl"></i>
+                                    </div>
+                                    <div class="font-bold text-sm ${isOptedIn ? 'text-gray-800' : 'text-gray-500'}">
+                                        ${isOptedIn ? t("You're on the list!") : t("Opt-in for Next Week")}
+                                    </div>
+                                </div>
+                                <button onclick="CoffeeChatsModule.toggleOptIn('${isOptedIn ? optInRecord.id : ''}')" class="btn-sm-3d px-5 py-2.5 text-xs font-bold transition-colors ${isOptedIn ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' : 'bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600'}">
+                                    ${isOptedIn ? t("Opt-out") : "Opt-In"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return html;
+            },
+            toggleOptIn: function(recordId) {
+                if (recordId) {
+                    DB.delete('coffeeOptIns', recordId);
+                    App.showToast(t("Action completed successfully"));
+                } else {
+                    DB.add('coffeeOptIns', { userId: state.currentUser.id, dateAdded: new Date().toISOString() });
+                    App.showToast("Opted in successfully!", "success");
+                }
+            },
+            renderAdminWidget: function() {
+                return `
+                    <div class="card-3d p-4 bg-amber-50/50 border-amber-100">
+                        <h3 class="font-bold text-sm text-amber-800 flex items-center gap-2"><i class="ph-fill ph-coffee text-amber-500"></i> Coffee Chats</h3>
+                        <div class="flex-1 flex items-center justify-center gap-8 mt-2">
+                            <div class="text-center">
+                                <p class="text-3xl font-bold text-amber-600">${db.coffeeMatches.length}</p>
+                                <span class="text-[10px] font-bold text-amber-700/60 uppercase tracking-wider block mt-1">${t("Active Pairs")}</span>
+                            </div>
+                            <div class="w-px h-10 bg-amber-200"></div>
+                            <div class="text-center">
+                                <p class="text-3xl font-bold text-emerald-600">${db.coffeeOptIns.length}</p>
+                                <span class="text-[10px] font-bold text-emerald-700/60 uppercase tracking-wider block mt-1">Opt-ins</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+
+        // NEW MODULE: SKILL EXCHANGE / MENTORSHIP
+        const SkillExchangeModule = {
+            id: 'skillExchange', name: 'Skill Exchange', description: 'Teach or learn new skills with coworkers.', icon: 'ph-puzzle-piece', hasUserTab: true,
+            renderUserView: function() {
+                const listings = [...db.skills].sort((a,b) => new Date(b.date) - new Date(a.date));
+                let html = `
+                    <div class="space-y-6 pb-20 max-w-7xl mx-auto w-full">
+                        <div>
+                            <h2 class="text-2xl font-bold">${t("Skill Exchange")}</h2>
+                            <p class="text-gray-500 text-sm">${t("Teach or learn new skills with coworkers.")}</p>
+                        </div>
+                        <div class="card-3d p-6 bg-white border border-gray-100 max-w-2xl">
+                            <div class="flex gap-2 mb-5 p-1 bg-gray-50 rounded-xl border border-gray-200">
+                                <label class="flex-1 flex items-center justify-center py-2.5 rounded-lg cursor-pointer transition-colors relative">
+                                    <input type="radio" name="sk-type" value="teach" checked class="peer sr-only">
+                                    <div class="absolute inset-0 bg-white rounded-lg shadow-sm border border-gray-200 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    <span class="text-xs font-bold text-gray-500 peer-checked:text-indigo-600 relative z-10">${t("I want to teach")}</span>
+                                </label>
+                                <label class="flex-1 flex items-center justify-center py-2.5 rounded-lg cursor-pointer transition-colors relative">
+                                    <input type="radio" name="sk-type" value="learn" class="peer sr-only">
+                                    <div class="absolute inset-0 bg-white rounded-lg shadow-sm border border-gray-200 opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    <span class="text-xs font-bold text-gray-500 peer-checked:text-rose-600 relative z-10">${t("I want to learn")}</span>
+                                </label>
+                            </div>
+                            <div class="space-y-4">
+                                <input type="text" id="sk-skill" placeholder="${t("Skill (e.g., Python, Public Speaking)")}" class="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 text-sm font-bold outline-none focus:border-indigo-400">
+                                <button onclick="SkillExchangeModule.submit()" class="btn-sm-3d w-full py-3.5 bg-indigo-500 text-white border-indigo-600 font-bold flex items-center justify-center gap-2 text-sm">
+                                    <i class="ph-bold ph-puzzle-piece text-lg"></i> ${t("Post Skill")}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-400 uppercase tracking-wider text-[11px] mb-4 ml-1">${t("Active Listings")}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                `;
+                if (listings.length === 0) { html += `<p class="text-center text-gray-400 py-4 text-sm bg-white rounded-2xl border border-gray-100 border-dashed col-span-full">No skills listed yet.</p>`; }
+                listings.forEach(item => {
+                    const user = db.users.find(u => u.id === item.userId);
+                    const isTeach = item.type === 'teach';
+                    const badgeColor = isTeach ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-rose-50 text-rose-600 border-rose-200';
+                    const badgeText = isTeach ? t('Teaching') : t('Learning');
+                    html += `
+                        <div class="card-3d p-6 bg-white border border-gray-100 mb-0 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start mb-3">
+                                    <span class="px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wider ${badgeColor}">${badgeText}</span>
+                                </div>
+                                <h4 class="font-bold text-lg text-gray-800 leading-tight mb-5 mt-2">${item.skill}</h4>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full ${user.color} flex items-center justify-center text-xs font-bold">${user.initials}</div>
+                                    <span class="text-xs font-medium text-gray-500">${user.name}</span>
+                                </div>
+                                <a href="mailto:${user.email}?subject=Skill Exchange: ${item.skill}" class="btn-sm-3d px-4 py-2 bg-indigo-50 text-indigo-700 border-indigo-200 text-xs flex items-center gap-1.5 hover:bg-indigo-100 transition-colors">
+                                    <i class="ph-bold ph-envelope-simple text-sm"></i> ${t("Connect")}
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div></div>`;
+                return html;
+            },
+            submit: function() { const type = document.querySelector('input[name="sk-type"]:checked').value; const skill = document.getElementById('sk-skill').value.trim(); if (skill) { DB.add('skills', {userId: state.currentUser.id, type: type, skill: skill, date: new Date().toISOString()}); App.showToast(t("Action completed successfully")); } else { App.showToast(t("Please fill all required fields"), "error"); } },
+            renderAdminWidget: function() { return `<div class="card-3d p-4 bg-indigo-50/50 border-indigo-100"><h3 class="font-bold text-sm text-indigo-800 flex items-center gap-2"><i class="ph-fill ph-puzzle-piece text-indigo-500"></i> Skill Exchange</h3><div class="flex-1 flex items-center justify-center"><p class="text-2xl font-bold text-indigo-600">${db.skills.length} <span class="text-xs font-medium text-indigo-700/60 uppercase tracking-wider block">Listings</span></p></div></div>`; }
+        };
+
         // =========================================
         // INITIALIZATION
         // =========================================
@@ -1121,6 +1295,8 @@
         App.registerModule(TrainingModule); 
         App.registerModule(WorkLocationModule); 
         App.registerModule(ReferralsModule);
+        App.registerModule(CoffeeChatsModule); 
+        App.registerModule(SkillExchangeModule); // Register the 32nd module!
         
         window.onload = () => App.init();
 
