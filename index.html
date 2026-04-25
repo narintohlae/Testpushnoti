@@ -43,15 +43,20 @@
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-        
-        /* Fix for iOS momentum scrolling */
         .overflow-y-auto { -webkit-overflow-scrolling: touch; }
+
+        /* ป้องกัน iOS Safari ซูมหน้าจออัตโนมัติเมื่อกด Input */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased h-screen overflow-hidden flex flex-col md:flex-row">
 
     <!-- Offline Alert -->
-    <div id="offlineBanner" class="fixed top-0 left-0 w-full bg-red-500 text-white text-center py-2 text-xs md:text-sm font-medium z-50 hidden shadow-md flex items-center justify-center gap-2 transition-transform transform -translate-y-full duration-300">
+    <div id="offlineBanner" class="fixed top-0 left-0 w-full bg-red-500 text-white text-center py-2 text-base font-medium z-50 hidden shadow-md flex items-center justify-center gap-2 transition-transform transform -translate-y-full duration-300">
         <i class="ph-bold ph-wifi-none text-lg"></i><span>ขาดการเชื่อมต่ออินเทอร์เน็ต ข้อมูลจะไม่ถูกบันทึกจนกว่าจะออนไลน์</span>
     </div>
 
@@ -73,7 +78,6 @@
 
         <div class="flex-1 px-4 py-0 overflow-y-auto flex flex-col gap-2">
             <p class="px-4 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 mt-4">เมนูหลัก</p>
-            
             <button onclick="switchView('dashboard')" id="nav-dashboard" class="nav-btn flex items-center gap-3 px-4 py-3.5 rounded-2xl text-left transition-all duration-200 bg-brand-50 text-brand-600 font-medium">
                 <i class="ph ph-squares-four text-xl"></i><span>แดชบอร์ดลงเวลา</span>
             </button>
@@ -113,7 +117,7 @@
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
                 <div>
                     <h1 class="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight" id="pageTitle">แดชบอร์ด</h1>
-                    <p class="text-sm md:text-base text-slate-500 mt-1" id="currentDateDisplay">กำลังโหลด...</p>
+                    <p class="text-base text-slate-500 mt-1" id="currentDateDisplay">กำลังโหลด...</p>
                 </div>
                 
                 <div class="glass-panel px-6 py-4 rounded-3xl shadow-soft flex items-center gap-4 w-full md:w-auto justify-center shrink-0">
@@ -122,14 +126,14 @@
                 </div>
             </div>
 
-            <!-- Company Holiday Alert (Shows only if today is a holiday) -->
+            <!-- Company Holiday Alert -->
             <div id="todayHolidayAlert" class="hidden mb-6 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-3xl p-5 md:p-6 text-white shadow-lg shadow-purple-500/20 flex items-center gap-4 fade-in">
                 <div class="w-10 h-10 md:w-12 md:h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md shrink-0">
                     <i class="ph-fill ph-confetti text-xl md:text-2xl text-white"></i>
                 </div>
                 <div>
                     <h3 class="font-bold text-base md:text-lg">วันนี้เป็นวันหยุดของร้าน</h3>
-                    <p class="text-purple-100 text-xs md:text-sm mt-0.5" id="todayHolidayName">เนื่องในโอกาส...</p>
+                    <p class="text-purple-100 text-sm mt-0.5" id="todayHolidayName">เนื่องในโอกาส...</p>
                 </div>
             </div>
 
@@ -153,12 +157,12 @@
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
                         <h2 class="text-base md:text-lg font-semibold text-slate-800">รายชื่อพนักงานทั้งหมด</h2>
-                        <button onclick="openEmployeeModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shrink-0"><i class="ph-bold ph-plus"></i> <span class="hidden sm:inline">เพิ่มพนักงาน</span><span class="sm:hidden">เพิ่ม</span></button>
+                        <button onclick="openEmployeeModal()" class="bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shrink-0"><i class="ph-bold ph-plus"></i> <span class="hidden sm:inline">เพิ่มพนักงาน</span><span class="sm:hidden">เพิ่ม</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
                         <table class="w-full text-left border-collapse min-w-[500px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อ-นามสกุล</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ตำแหน่ง</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">สถานะล่าสุด</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
-                            <tbody id="employeeTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อ-นามสกุล</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ตำแหน่ง</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">สถานะล่าสุด</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
+                            <tbody id="employeeTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -168,13 +172,13 @@
             <div id="view-logs" class="view-section hidden fade-in">
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800">ประวัติการลงเวลาล่าสุด</h2><p class="text-xs md:text-sm text-slate-500">ข้อมูลเข้า-ออกงานเรียงตามเวลา (แสดง 50 รายการล่าสุด)</p></div>
-                        <button onclick="openAddPastLogModal()" class="bg-brand-50 hover:bg-brand-100 text-brand-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shrink-0"><i class="ph-bold ph-clock-counter-clockwise text-base md:text-lg"></i> <span class="hidden sm:inline">เพิ่มย้อนหลัง</span><span class="sm:hidden">เพิ่ม</span></button>
+                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800">ประวัติการลงเวลาล่าสุด</h2><p class="text-sm text-slate-500">ข้อมูลเข้า-ออกงานเรียงตามเวลา (แสดง 50 รายการล่าสุด)</p></div>
+                        <button onclick="openAddPastLogModal()" class="bg-brand-50 hover:bg-brand-100 text-brand-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shrink-0"><i class="ph-bold ph-clock-counter-clockwise text-lg"></i> <span class="hidden sm:inline">เพิ่มย้อนหลัง</span><span class="sm:hidden">เพิ่ม</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
                         <table class="w-full text-left border-collapse min-w-[500px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่-เวลา</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ประเภท</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
-                            <tbody id="logsTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่-เวลา</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ประเภท</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
+                            <tbody id="logsTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -182,29 +186,27 @@
 
             <!-- ================= VIEW: LEAVES & SWAPS ================= -->
             <div id="view-leaves" class="view-section hidden fade-in space-y-6">
-                <!-- Leaves -->
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center gap-4">
                         <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-bed text-rose-500"></i> ประวัติการลางาน</h2></div>
-                        <button onclick="openLeaveModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">เพิ่มวันลา</span><span class="sm:hidden">เพิ่ม</span></button>
+                        <button onclick="openLeaveModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">เพิ่มวันลา</span><span class="sm:hidden">เพิ่ม</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
                         <table class="w-full text-left border-collapse min-w-[600px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่ลา</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ประเภท</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">การจ่ายเงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">ลบ</th></tr></thead>
-                            <tbody id="leavesTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่ลา</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ประเภท</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">การจ่ายเงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">ลบ</th></tr></thead>
+                            <tbody id="leavesTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
-                <!-- Swaps -->
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center gap-4">
                         <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-arrows-left-right text-indigo-500"></i> ประวัติสลับวันหยุด</h2></div>
-                        <button onclick="openSwapModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">สลับวันหยุด</span><span class="sm:hidden">สลับ</span></button>
+                        <button onclick="openSwapModal()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">สลับวันหยุด</span><span class="sm:hidden">สลับ</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
                         <table class="w-full text-left border-collapse min-w-[500px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันหยุดเดิม (วันที่มาทำแทน)</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันหยุดใหม่ (วันที่ขอหยุด)</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">ลบ</th></tr></thead>
-                            <tbody id="swapsTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันหยุดเดิม (วันที่มาทำแทน)</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันหยุดใหม่ (วันที่ขอหยุด)</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">ลบ</th></tr></thead>
+                            <tbody id="swapsTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -214,13 +216,13 @@
             <div id="view-holidays" class="view-section hidden fade-in">
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-calendar-star text-purple-500"></i> วันหยุดของร้าน</h2><p class="text-xs md:text-sm text-slate-500">ตั้งค่าวันหยุดเทศกาลล่วงหน้า</p></div>
-                        <button onclick="openHolidayModal()" class="bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-xs md:text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">เพิ่มวันหยุดร้าน</span><span class="sm:hidden">เพิ่ม</span></button>
+                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-calendar-star text-purple-500"></i> วันหยุดของร้าน</h2><p class="text-sm text-slate-500">ตั้งค่าวันหยุดเทศกาลล่วงหน้า</p></div>
+                        <button onclick="openHolidayModal()" class="bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 shrink-0"><i class="ph-bold ph-plus text-base"></i> <span class="hidden sm:inline">เพิ่มวันหยุดร้าน</span><span class="sm:hidden">เพิ่ม</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
-                        <table class="w-full text-left border-collapse min-w-[500px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่หยุด</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อเทศกาล / เหตุผล</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">การจ่ายเงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">ลบ</th></tr></thead>
-                            <tbody id="holidaysTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"></tbody>
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่หยุด</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อเทศกาล / เหตุผล</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">การจ่ายเงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
+                            <tbody id="holidaysTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
                 </div>
@@ -230,17 +232,17 @@
             <div id="view-salary" class="view-section hidden fade-in">
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100">
-                        <div class="flex flex-col gap-1 mb-4 md:mb-6"><h2 class="text-base md:text-lg font-semibold text-slate-800">คำนวณเงินเดือนและ OT</h2><p class="text-[10px] md:text-xs text-slate-500">ระบบจะนำ <u>วันลารับเงิน</u> และ <u>วันหยุดของร้าน(ที่รับเงิน)</u> มาคิดเป็นวันทำงานให้อัตโนมัติ</p></div>
+                        <div class="flex flex-col gap-1 mb-4 md:mb-6"><h2 class="text-base md:text-lg font-semibold text-slate-800">คำนวณเงินเดือนและ OT</h2><p class="text-xs md:text-sm text-slate-500">ระบบจะนำ <u>วันลารับเงิน</u> และ <u>วันหยุดของร้าน(ที่รับเงิน)</u> มาคิดเป็นวันทำงานให้อัตโนมัติ</p></div>
                         <div class="flex flex-col md:flex-row gap-3 items-end bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            <div class="w-full md:w-auto flex-1"><label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">ตั้งแต่วันที่</label><input type="date" id="salaryStartDate" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 bg-white text-sm md:text-base"></div>
-                            <div class="w-full md:w-auto flex-1"><label class="block text-xs md:text-sm font-medium text-slate-700 mb-1">ถึงวันที่</label><input type="date" id="salaryEndDate" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 bg-white text-sm md:text-base"></div>
-                            <button onclick="calculateSalary()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl text-sm md:text-base font-medium shadow-lg shadow-slate-800/20 flex justify-center items-center gap-2 transition-transform active:scale-95"><i class="ph-bold ph-calculator"></i> คำนวณยอด</button>
+                            <div class="w-full md:w-auto flex-1"><label class="block text-sm font-medium text-slate-700 mb-1">ตั้งแต่วันที่</label><input type="date" id="salaryStartDate" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 bg-white text-base"></div>
+                            <div class="w-full md:w-auto flex-1"><label class="block text-sm font-medium text-slate-700 mb-1">ถึงวันที่</label><input type="date" id="salaryEndDate" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-brand-500 bg-white text-base"></div>
+                            <button onclick="calculateSalary()" class="w-full md:w-auto bg-slate-800 hover:bg-slate-700 text-white px-6 py-2.5 rounded-xl text-base font-medium shadow-lg shadow-slate-800/20 flex justify-center items-center gap-2 transition-transform active:scale-95"><i class="ph-bold ph-calculator"></i> คำนวณยอด</button>
                         </div>
                     </div>
                     <div class="overflow-x-auto pb-2">
                         <table class="w-full text-left border-collapse min-w-[900px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-xs md:text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อพนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center" title="วันที่สแกนนิ้วเข้างาน">มาทำงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center text-rose-600" title="ลาแบบได้รับค่าจ้าง">ลาได้เงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center text-purple-600" title="วันหยุดบริษัทที่ได้รับค่าจ้าง">วันหยุดร้าน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center">ชั่วโมงงาน / OT</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">ค่าแรงพื้นฐาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">ค่า OT</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">รวมสุทธิ (บาท)</th></tr></thead>
-                            <tbody id="salaryTableBody" class="divide-y divide-slate-100 text-xs md:text-sm"><tr><td colspan="8" class="px-4 py-8 text-center text-slate-400 text-sm">กรุณาเลือกช่วงวันที่และกด "คำนวณยอด"</td></tr></tbody>
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ชื่อพนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center" title="วันที่สแกนนิ้วเข้างาน">มาทำงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center text-rose-600" title="ลาแบบได้รับค่าจ้าง">ลาได้เงิน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center text-purple-600" title="วันหยุดบริษัทที่ได้รับค่าจ้าง">วันหยุดร้าน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-center">ชั่วโมงงาน / OT</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">ค่าแรงพื้นฐาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">ค่า OT</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap text-right">รวมสุทธิ (บาท)</th></tr></thead>
+                            <tbody id="salaryTableBody" class="divide-y divide-slate-100 text-sm"><tr><td colspan="8" class="px-4 py-8 text-center text-slate-400 text-sm">กรุณาเลือกช่วงวันที่และกด "คำนวณยอด"</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -251,11 +253,11 @@
 
     <!-- Mobile Bottom Navigation -->
     <nav class="md:hidden fixed bottom-0 w-full bg-white/90 backdrop-blur-xl border-t border-slate-200 z-30 flex justify-around items-center pb-safe shadow-nav px-1">
-        <button onclick="switchView('dashboard')" id="mobile-nav-dashboard" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-brand-600"><i class="ph-fill ph-squares-four text-xl sm:text-2xl"></i><span class="text-[9px] sm:text-[10px] font-medium">ลงเวลา</span></button>
-        <button onclick="switchView('employees')" id="mobile-nav-employees" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-users text-xl sm:text-2xl"></i><span class="text-[9px] sm:text-[10px] font-medium">พนักงาน</span></button>
-        <button onclick="switchView('leaves')" id="mobile-nav-leaves" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calendar-plus text-xl sm:text-2xl"></i><span class="text-[9px] sm:text-[10px] font-medium">ลา/สลับ</span></button>
-        <button onclick="switchView('holidays')" id="mobile-nav-holidays" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calendar-star text-xl sm:text-2xl"></i><span class="text-[9px] sm:text-[10px] font-medium">หยุดร้าน</span></button>
-        <button onclick="switchView('salary')" id="mobile-nav-salary" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calculator text-xl sm:text-2xl"></i><span class="text-[9px] sm:text-[10px] font-medium">เงินเดือน</span></button>
+        <button onclick="switchView('dashboard')" id="mobile-nav-dashboard" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-brand-600"><i class="ph-fill ph-squares-four text-xl sm:text-2xl"></i><span class="text-[10px] font-medium">ลงเวลา</span></button>
+        <button onclick="switchView('employees')" id="mobile-nav-employees" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-users text-xl sm:text-2xl"></i><span class="text-[10px] font-medium">พนักงาน</span></button>
+        <button onclick="switchView('leaves')" id="mobile-nav-leaves" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calendar-plus text-xl sm:text-2xl"></i><span class="text-[10px] font-medium">ลา/สลับ</span></button>
+        <button onclick="switchView('holidays')" id="mobile-nav-holidays" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calendar-star text-xl sm:text-2xl"></i><span class="text-[10px] font-medium">หยุดร้าน</span></button>
+        <button onclick="switchView('salary')" id="mobile-nav-salary" class="mobile-nav-btn flex-1 py-3 flex flex-col items-center gap-1 text-slate-400"><i class="ph-fill ph-calculator text-xl sm:text-2xl"></i><span class="text-[10px] font-medium">เงินเดือน</span></button>
     </nav>
 
     <!-- Modals Overlay -->
@@ -267,11 +269,11 @@
             <button onclick="closeModal('actionModal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-1.5"><i class="ph-bold ph-x text-lg"></i></button>
             <div class="w-16 h-16 md:w-20 md:h-20 mx-auto rounded-full bg-slate-100 border-4 border-white shadow-md flex items-center justify-center text-2xl md:text-3xl font-bold text-slate-400 mb-3" id="actionAvatar">A</div>
             <h3 class="text-lg md:text-xl font-bold text-slate-800" id="actionName">ชื่อพนักงาน</h3>
-            <p class="text-slate-500 text-xs md:text-sm mb-5" id="actionPosition">ตำแหน่ง</p>
-            <div class="bg-slate-50 rounded-2xl p-3 md:p-4 mb-5"><p class="text-[10px] md:text-xs text-slate-500 mb-1">เวลาปัจจุบัน</p><p class="text-xl md:text-2xl font-bold text-brand-600 tabular-nums" id="actionClock">00:00:00</p></div>
+            <p class="text-slate-500 text-sm mb-5" id="actionPosition">ตำแหน่ง</p>
+            <div class="bg-slate-50 rounded-2xl p-3 md:p-4 mb-5"><p class="text-xs text-slate-500 mb-1">เวลาปัจจุบัน</p><p class="text-xl md:text-2xl font-bold text-brand-600 tabular-nums" id="actionClock">00:00:00</p></div>
             <div class="flex gap-2 md:gap-3">
-                <button id="btnClockIn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-2xl font-medium shadow-lg shadow-emerald-500/30 active:scale-95 flex items-center justify-center gap-1.5 text-sm md:text-base"><i class="ph-bold ph-sign-in text-lg"></i> เข้างาน</button>
-                <button id="btnClockOut" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-2xl font-medium shadow-lg shadow-amber-500/30 active:scale-95 flex items-center justify-center gap-1.5 text-sm md:text-base"><i class="ph-bold ph-sign-out text-lg"></i> ออกงาน</button>
+                <button id="btnClockIn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-2xl font-medium shadow-lg shadow-emerald-500/30 active:scale-95 flex items-center justify-center gap-1.5 text-base"><i class="ph-bold ph-sign-in text-lg"></i> เข้างาน</button>
+                <button id="btnClockOut" class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-2xl font-medium shadow-lg shadow-amber-500/30 active:scale-95 flex items-center justify-center gap-1.5 text-base"><i class="ph-bold ph-sign-out text-lg"></i> ออกงาน</button>
             </div>
         </div>
     </div>
@@ -282,11 +284,11 @@
             <div class="flex justify-between items-center mb-4 md:mb-6"><h3 class="text-lg md:text-xl font-bold text-slate-800" id="employeeModalTitle">เพิ่มพนักงานใหม่</h3><button onclick="closeModal('addEmployeeModal')" class="text-slate-400 hover:bg-slate-100 rounded-full p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="addEmployeeForm" onsubmit="handleFormSubmit(event)">
                 <div class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"><input type="text" id="empName" required class="w-full px-4 py-2.5 md:py-3 rounded-2xl border bg-slate-50 text-sm md:text-base" placeholder="ชื่อ-นามสกุล"><input type="text" id="empPosition" required class="w-full px-4 py-2.5 md:py-3 rounded-2xl border bg-slate-50 text-sm md:text-base" placeholder="ตำแหน่ง"></div>
-                    <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border space-y-3"><h4 class="text-xs md:text-sm font-bold flex items-center gap-2"><i class="ph-fill ph-clock-user"></i> เวลาทำงาน & วันหยุด</h4><div class="grid grid-cols-2 gap-3"><input type="time" id="empStartTime" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-sm"><input type="time" id="empEndTime" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-sm"></div><select id="empDayOff" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-sm appearance-none"><option value="">ไม่มีวันหยุดประจำสัปดาห์</option><option value="1">วันจันทร์</option><option value="2">วันอังคาร</option><option value="3">วันพุธ</option><option value="4">วันพฤหัสบดี</option><option value="5">วันศุกร์</option><option value="6">วันเสาร์</option><option value="0">วันอาทิตย์</option></select></div>
-                    <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border space-y-3"><h4 class="text-xs md:text-sm font-bold flex items-center gap-2"><i class="ph-fill ph-money"></i> ผลตอบแทน</h4><div class="grid grid-cols-2 gap-3"><input type="number" id="empWeeklySalary" min="0" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-sm" placeholder="เงินเดือนรายสัปดาห์"><input type="number" id="empOtRate" min="0" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-sm" placeholder="เรท OT / ชั่วโมง"></div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4"><input type="text" id="empName" required class="w-full px-4 py-2.5 md:py-3 rounded-2xl border bg-slate-50 text-base" placeholder="ชื่อ-นามสกุล"><input type="text" id="empPosition" required class="w-full px-4 py-2.5 md:py-3 rounded-2xl border bg-slate-50 text-base" placeholder="ตำแหน่ง"></div>
+                    <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border space-y-3"><h4 class="text-sm font-bold flex items-center gap-2"><i class="ph-fill ph-clock-user"></i> เวลาทำงาน & วันหยุด</h4><div class="grid grid-cols-2 gap-3"><input type="time" id="empStartTime" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-base"><input type="time" id="empEndTime" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-base"></div><select id="empDayOff" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-base appearance-none"><option value="">ไม่มีวันหยุดประจำสัปดาห์</option><option value="1">วันจันทร์</option><option value="2">วันอังคาร</option><option value="3">วันพุธ</option><option value="4">วันพฤหัสบดี</option><option value="5">วันศุกร์</option><option value="6">วันเสาร์</option><option value="0">วันอาทิตย์</option></select></div>
+                    <div class="bg-slate-50 p-3 md:p-4 rounded-2xl border space-y-3"><h4 class="text-sm font-bold flex items-center gap-2"><i class="ph-fill ph-money"></i> ผลตอบแทน</h4><div class="grid grid-cols-2 gap-3"><input type="number" id="empWeeklySalary" min="0" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-base" placeholder="เงินเดือนรายสัปดาห์"><input type="number" id="empOtRate" min="0" class="w-full px-3 py-2 md:py-2.5 rounded-xl border text-base" placeholder="เรท OT / ชั่วโมง"></div></div>
                 </div>
-                <div class="mt-6 md:mt-8 flex gap-2 md:gap-3"><button type="button" onclick="closeModal('addEmployeeModal')" class="flex-1 py-2.5 md:py-3 rounded-2xl bg-slate-100 text-sm md:text-base font-medium">ยกเลิก</button><button type="submit" id="saveEmpBtn" class="flex-1 py-2.5 md:py-3 rounded-2xl bg-slate-800 text-white text-sm md:text-base font-medium shadow-lg">บันทึกข้อมูล</button></div>
+                <div class="mt-6 md:mt-8 flex gap-2 md:gap-3"><button type="button" onclick="closeModal('addEmployeeModal')" class="flex-1 py-2.5 md:py-3 rounded-2xl bg-slate-100 text-base font-medium">ยกเลิก</button><button type="submit" id="saveEmpBtn" class="flex-1 py-2.5 md:py-3 rounded-2xl bg-slate-800 text-white text-base font-medium shadow-lg">บันทึกข้อมูล</button></div>
             </form>
         </div>
     </div>
@@ -297,11 +299,11 @@
             <div class="flex justify-between items-center mb-4 md:mb-6"><h3 class="text-lg font-bold">เพิ่มประวัติย้อนหลัง</h3><button onclick="closeModal('addPastLogModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="addPastLogForm" onsubmit="handleAddPastLogSubmit(event)">
                 <div class="space-y-4">
-                    <select id="pastLogEmployee" required class="w-full px-4 py-2.5 rounded-2xl border bg-slate-50 text-sm appearance-none"></select>
-                    <div class="flex gap-2"><label class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 text-sm"><input type="radio" name="pastLogAction" value="in" required class="hidden"><i class="ph-bold ph-sign-in"></i> เข้างาน</label><label class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border cursor-pointer has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 text-sm"><input type="radio" name="pastLogAction" value="out" required class="hidden"><i class="ph-bold ph-sign-out"></i> ออกงาน</label></div>
-                    <div class="grid grid-cols-2 gap-3"><input type="date" id="pastLogDate" required class="w-full px-3 py-2.5 rounded-xl border text-sm"><input type="time" id="pastLogTime" required class="w-full px-3 py-2.5 rounded-xl border text-sm"></div>
+                    <select id="pastLogEmployee" required class="w-full px-4 py-2.5 rounded-2xl border bg-slate-50 text-base appearance-none"></select>
+                    <div class="flex gap-2"><label class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border cursor-pointer has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50 text-base"><input type="radio" name="pastLogAction" value="in" required class="hidden"><i class="ph-bold ph-sign-in"></i> เข้างาน</label><label class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border cursor-pointer has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 text-base"><input type="radio" name="pastLogAction" value="out" required class="hidden"><i class="ph-bold ph-sign-out"></i> ออกงาน</label></div>
+                    <div class="grid grid-cols-2 gap-3"><input type="date" id="pastLogDate" required class="w-full px-3 py-2.5 rounded-xl border text-base"><input type="time" id="pastLogTime" required class="w-full px-3 py-2.5 rounded-xl border text-base"></div>
                 </div>
-                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addPastLogModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm">ยกเลิก</button><button type="submit" id="savePastLogBtn" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm">บันทึก</button></div>
+                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addPastLogModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-base">ยกเลิก</button><button type="submit" id="savePastLogBtn" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-base">บันทึก</button></div>
             </form>
         </div>
     </div>
@@ -311,8 +313,8 @@
         <div class="p-5 md:p-6 pb-safe">
             <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">แก้ไขเวลาลงงาน</h3><button onclick="closeModal('editLogModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="editLogForm" onsubmit="handleEditLogSubmit(event)">
-                <div class="space-y-4"><input type="date" id="editLogDate" required class="w-full px-4 py-2.5 rounded-2xl border text-sm"><input type="time" id="editLogTime" required class="w-full px-4 py-2.5 rounded-2xl border text-sm"></div>
-                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('editLogModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm">ยกเลิก</button><button type="submit" id="saveLogBtn" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm">บันทึก</button></div>
+                <div class="space-y-4"><input type="date" id="editLogDate" required class="w-full px-4 py-2.5 rounded-2xl border text-base"><input type="time" id="editLogTime" required class="w-full px-4 py-2.5 rounded-2xl border text-base"></div>
+                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('editLogModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-base">ยกเลิก</button><button type="submit" id="saveLogBtn" class="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-base">บันทึก</button></div>
             </form>
         </div>
     </div>
@@ -323,15 +325,15 @@
             <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-slate-800">บันทึกการลางาน</h3><button onclick="closeModal('addLeaveModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="addLeaveForm" onsubmit="handleLeaveSubmit(event)">
                 <div class="space-y-4">
-                    <div><label class="text-xs text-slate-500 mb-1 block">พนักงาน</label><select id="leaveEmployee" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-sm appearance-none"></select></div>
-                    <div><label class="text-xs text-slate-500 mb-1 block">วันที่ลา</label><input type="date" id="leaveDate" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-sm"></div>
-                    <div><label class="text-xs text-slate-500 mb-1 block">ประเภท</label><select id="leaveType" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-sm appearance-none"><option value="sick">ลาป่วย</option><option value="personal">ลากิจ</option><option value="vacation">ลาพักร้อน</option></select></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">พนักงาน</label><select id="leaveEmployee" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-base appearance-none"></select></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">วันที่ลา</label><input type="date" id="leaveDate" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-base"></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">ประเภท</label><select id="leaveType" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-base appearance-none"><option value="sick">ลาป่วย</option><option value="personal">ลากิจ</option><option value="vacation">ลาพักร้อน</option></select></div>
                     <div class="bg-rose-50 p-3 rounded-xl border flex justify-between items-center">
-                        <div><p class="text-sm font-semibold text-rose-800">ได้เงินเดือน?</p><p class="text-[10px] text-rose-600">บวกค่าแรงวันนี้ให้ตอนคำนวณ</p></div>
+                        <div><p class="text-base font-semibold text-rose-800">ได้เงินเดือน?</p><p class="text-[10px] text-rose-600">บวกค่าแรงวันนี้ให้ตอนคำนวณ</p></div>
                         <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="leaveIsPaid" class="sr-only peer" checked><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label>
                     </div>
                 </div>
-                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addLeaveModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm">ยกเลิก</button><button type="submit" id="saveLeaveBtn" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-sm">บันทึกวันลา</button></div>
+                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addLeaveModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-base">ยกเลิก</button><button type="submit" id="saveLeaveBtn" class="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-base">บันทึกวันลา</button></div>
             </form>
         </div>
     </div>
@@ -342,30 +344,30 @@
             <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">สลับวันหยุด</h3><button onclick="closeModal('addSwapModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="addSwapForm" onsubmit="handleSwapSubmit(event)">
                 <div class="space-y-4">
-                    <select id="swapEmployee" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-sm appearance-none"></select>
-                    <div><label class="text-xs text-slate-500 mb-1 block">วันหยุดเดิม (วันที่ต้องมาทำงานแทน)</label><input type="date" id="swapOriginalDate" required class="w-full px-4 py-2.5 rounded-xl border text-sm"></div>
+                    <select id="swapEmployee" required class="w-full px-4 py-2.5 rounded-xl border bg-slate-50 text-base appearance-none"></select>
+                    <div><label class="text-sm text-slate-500 mb-1 block">วันหยุดเดิม (วันที่ต้องมาทำงานแทน)</label><input type="date" id="swapOriginalDate" required class="w-full px-4 py-2.5 rounded-xl border text-base"></div>
                     <div class="text-center text-slate-300"><i class="ph-bold ph-arrow-down"></i></div>
-                    <div><label class="text-xs text-slate-500 mb-1 block">วันหยุดใหม่ (วันที่ขอหยุดงาน)</label><input type="date" id="swapNewDate" required class="w-full px-4 py-2.5 rounded-xl border text-sm"></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">วันหยุดใหม่ (วันที่ขอหยุดงาน)</label><input type="date" id="swapNewDate" required class="w-full px-4 py-2.5 rounded-xl border text-base"></div>
                 </div>
-                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addSwapModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm">ยกเลิก</button><button type="submit" id="saveSwapBtn" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm">บันทึกสลับวัน</button></div>
+                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addSwapModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-base">ยกเลิก</button><button type="submit" id="saveSwapBtn" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-base">บันทึกสลับวัน</button></div>
             </form>
         </div>
     </div>
 
-    <!-- ================= MODAL: ADD HOLIDAY ================= -->
+    <!-- ================= MODAL: ADD/EDIT HOLIDAY ================= -->
     <div id="addHolidayModal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-3xl shadow-2xl z-50 hidden opacity-0 scale-95 transition-all duration-300">
         <div class="p-5 md:p-6 pb-safe">
-            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold">เพิ่มวันหยุดร้าน</h3><button onclick="closeModal('addHolidayModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
+            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold" id="holidayModalTitle">เพิ่มวันหยุดร้าน</h3><button onclick="closeModal('addHolidayModal')" class="p-1.5"><i class="ph-bold ph-x text-lg"></i></button></div>
             <form id="addHolidayForm" onsubmit="handleHolidaySubmit(event)">
                 <div class="space-y-4">
-                    <div><label class="text-xs text-slate-500 mb-1 block">วันที่หยุดร้าน</label><input type="date" id="holidayDate" required class="w-full px-4 py-2.5 rounded-xl border text-sm"></div>
-                    <div><label class="text-xs text-slate-500 mb-1 block">ชื่อเทศกาล / เหตุผล</label><input type="text" id="holidayName" required class="w-full px-4 py-2.5 rounded-xl border text-sm" placeholder="เช่น วันขึ้นปีใหม่"></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">วันที่หยุดร้าน</label><input type="date" id="holidayDate" required class="w-full px-4 py-2.5 rounded-xl border text-base"></div>
+                    <div><label class="text-sm text-slate-500 mb-1 block">ชื่อเทศกาล / เหตุผล</label><input type="text" id="holidayName" required class="w-full px-4 py-2.5 rounded-xl border text-base" placeholder="เช่น วันขึ้นปีใหม่"></div>
                     <div class="bg-purple-50 p-3 rounded-xl border flex justify-between items-center">
-                        <div><p class="text-sm font-semibold text-purple-800">จ่ายค่าจ้างปกติ?</p><p class="text-[10px] text-purple-600">พนักงานจะได้ค่าแรงแม้หยุด</p></div>
+                        <div><p class="text-base font-semibold text-purple-800">จ่ายค่าจ้างปกติ?</p><p class="text-[10px] text-purple-600">พนักงานจะได้ค่าแรงแม้หยุด</p></div>
                         <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="holidayIsPaid" class="sr-only peer" checked><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-emerald-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label>
                     </div>
                 </div>
-                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addHolidayModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm">ยกเลิก</button><button type="submit" id="saveHolidayBtn" class="flex-1 py-2.5 rounded-xl bg-purple-600 text-white text-sm">บันทึก</button></div>
+                <div class="mt-6 flex gap-2"><button type="button" onclick="closeModal('addHolidayModal')" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-base">ยกเลิก</button><button type="submit" id="saveHolidayBtn" class="flex-1 py-2.5 rounded-xl bg-purple-600 text-white text-base">บันทึก</button></div>
             </form>
         </div>
     </div>
@@ -377,7 +379,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, getDoc, Timestamp, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Import deleteDoc statically at the top so it doesn't fail
+        import { getFirestore, collection, addDoc, onSnapshot, updateDoc, doc, getDoc, Timestamp, serverTimestamp, query, where, getDocs, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // === FIREBASE CONFIGURATION ===
         const firebaseConfig = {
@@ -404,6 +407,7 @@
         let selectedEmployee = null;
         let editingEmployeeId = null;
         let editingLogId = null;
+        let editingHolidayId = null; // For editing holidays
 
         // --- UTILITY FUNCTIONS ---
         window.showToast = function(message, type = 'success') {
@@ -411,7 +415,7 @@
             const toast = document.createElement('div');
             const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
             const icon = type === 'success' ? 'ph-check-circle' : 'ph-warning-circle';
-            toast.className = `${bgColor} text-white px-4 py-2.5 md:px-6 md:py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 w-full md:w-max text-sm`;
+            toast.className = `${bgColor} text-white px-4 py-2.5 md:px-6 md:py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2 transform translate-y-10 opacity-0 transition-all duration-300 w-full md:w-max text-base`;
             toast.innerHTML = `<i class="ph-bold ${icon} text-lg"></i><span class="font-medium">${message}</span>`;
             container.appendChild(toast);
             requestAnimationFrame(() => toast.classList.remove('translate-y-10', 'opacity-0'));
@@ -477,13 +481,12 @@
                 const currentVal = el.value;
                 el.innerHTML = '<option value="">-- เลือกพนักงาน --</option>';
                 employeesData.forEach(emp => { const opt = document.createElement('option'); opt.value = emp.id; opt.textContent = emp.name; el.appendChild(opt); });
-                el.value = currentVal; // Restore selection if any
+                el.value = currentVal;
             });
         }
 
         // --- RENDER FUNCTIONS ---
         
-        // 1. Dashboard Render (Intelligent Status)
         function renderDashboard() {
             const container = document.getElementById('employeeGrid');
             if (employeesData.length === 0) {
@@ -504,7 +507,6 @@
                 const isWorking = emp.status === 'in';
                 let specialStatusHTML = ''; let isAbsence = false;
 
-                // Check logic only if they are not currently working
                 if (!isWorking) {
                     const todayLeave = leavesData.find(l => l.employeeId === emp.id && l.date === todayStr);
                     const todayDayOfWeek = today.getDay().toString();
@@ -562,15 +564,14 @@
             document.getElementById('countIn').innerText = inCount; document.getElementById('countOut').innerText = outCount; document.getElementById('countLeave').innerText = leaveCount;
         }
 
-        // 2. Employee Table Render
         function renderEmployeeTable() {
             const tbody = document.getElementById('employeeTableBody'); let html = '';
             employeesData.forEach(emp => {
-                const sBadge = emp.status === 'in' ? '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-medium border border-emerald-100">ทำงาน</span>' : '<span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-[10px] font-medium border border-slate-200">ออกงาน</span>';
+                const sBadge = emp.status === 'in' ? '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] md:text-xs font-medium border border-emerald-100">ทำงาน</span>' : '<span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-[10px] md:text-xs font-medium border border-slate-200">ออกงาน</span>';
                 const wt = (emp.workStartTime && emp.workEndTime) ? `${emp.workStartTime}-${emp.workEndTime}` : 'ไม่ได้ตั้งเวลา';
                 html += `
                     <tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group">
-                        <td class="px-4 py-3 md:py-4 whitespace-nowrap"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex justify-center items-center font-bold text-xs shrink-0">${emp.name.substring(0,1)}</div><div><p class="font-medium text-slate-800 text-xs md:text-sm">${emp.name}</p><p class="text-[9px] text-slate-400 mt-0.5"><i class="ph-fill ph-clock"></i> ${wt}</p></div></div></td>
+                        <td class="px-4 py-3 md:py-4 whitespace-nowrap"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex justify-center items-center font-bold text-xs shrink-0">${emp.name.substring(0,1)}</div><div><p class="font-medium text-slate-800 text-xs md:text-sm">${emp.name}</p><p class="text-[10px] text-slate-400 mt-0.5"><i class="ph-fill ph-clock"></i> ${wt}</p></div></div></td>
                         <td class="px-4 py-3 md:py-4 text-xs md:text-sm text-slate-600 whitespace-nowrap">${emp.position}</td>
                         <td class="px-4 py-3 md:py-4 whitespace-nowrap">${sBadge}</td>
                         <td class="px-4 py-3 md:py-4 text-right whitespace-nowrap"><button onclick="editEmployee('${emp.id}')" class="text-slate-400 hover:text-brand-600 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-pencil-simple text-base"></i></button><button onclick="deleteEmployee('${emp.id}')" class="text-slate-400 hover:text-red-500 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-trash text-base"></i></button></td>
@@ -579,44 +580,49 @@
             tbody.innerHTML = html || `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">ไม่มีข้อมูล</td></tr>`;
         }
 
-        // 3. Logs Table Render
         function renderLogsTable() {
             const tbody = document.getElementById('logsTableBody'); let html = '';
             logsData.slice(0, 50).forEach(log => {
                 const dateStr = log.timestamp ? log.timestamp.toDate().toLocaleString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-                const badge = log.action === 'in' ? '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-medium"><i class="ph-bold ph-sign-in"></i> เข้างาน</span>' : '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] font-medium"><i class="ph-bold ph-sign-out"></i> ออกงาน</span>';
-                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 md:py-4 text-slate-500 text-[10px] md:text-xs whitespace-nowrap">${dateStr}</td><td class="px-4 py-3 md:py-4 font-medium text-slate-800 text-xs md:text-sm whitespace-nowrap">${log.employeeName}</td><td class="px-4 py-3 md:py-4 whitespace-nowrap">${badge}</td><td class="px-4 py-3 md:py-4 text-right whitespace-nowrap"><button onclick="editLogTime('${log.id}')" class="text-slate-400 hover:text-brand-600 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-pencil-simple text-base"></i></button><button onclick="deleteRecord('time_logs', '${log.id}')" class="text-slate-400 hover:text-red-500 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
+                const badge = log.action === 'in' ? '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] md:text-xs font-medium"><i class="ph-bold ph-sign-in"></i> เข้างาน</span>' : '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] md:text-xs font-medium"><i class="ph-bold ph-sign-out"></i> ออกงาน</span>';
+                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 md:py-4 text-slate-500 text-[10px] md:text-sm whitespace-nowrap">${dateStr}</td><td class="px-4 py-3 md:py-4 font-medium text-slate-800 text-xs md:text-sm whitespace-nowrap">${log.employeeName}</td><td class="px-4 py-3 md:py-4 whitespace-nowrap">${badge}</td><td class="px-4 py-3 md:py-4 text-right whitespace-nowrap"><button onclick="editLogTime('${log.id}')" class="text-slate-400 hover:text-brand-600 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-pencil-simple text-base"></i></button><button onclick="deleteRecord('time_logs', '${log.id}')" class="text-slate-400 hover:text-red-500 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">ไม่มีประวัติ</td></tr>`;
         }
 
-        // 4. Leaves Table Render
         function renderLeavesTable() {
             const tbody = document.getElementById('leavesTableBody'); let html = '';
             const tMap = { 'sick': 'ลาป่วย', 'personal': 'ลากิจ', 'vacation': 'ลาพักร้อน' };
             const cMap = { 'sick': 'text-amber-600 bg-amber-50 border-amber-100', 'personal': 'text-blue-600 bg-blue-50 border-blue-100', 'vacation': 'text-purple-600 bg-purple-50 border-purple-100' };
             leavesData.forEach(l => {
                 const pBadge = l.isPaid ? '<span class="text-emerald-600 flex items-center gap-1 text-[10px] md:text-xs font-medium"><i class="ph-fill ph-check-circle"></i> ได้เงิน</span>' : '<span class="text-slate-400 flex items-center gap-1 text-[10px] md:text-xs font-medium"><i class="ph-fill ph-x-circle"></i> ไม่ได้</span>';
-                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 text-slate-800 text-[10px] md:text-xs font-medium whitespace-nowrap">${formatThaiDate(l.date)}</td><td class="px-4 py-3 font-medium text-slate-600 text-xs whitespace-nowrap">${l.employeeName}</td><td class="px-4 py-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full border text-[10px] font-medium ${cMap[l.type]}">${tMap[l.type]}</span></td><td class="px-4 py-3 whitespace-nowrap">${pBadge}</td><td class="px-4 py-3 text-right"><button onclick="deleteRecord('leave_records', '${l.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
+                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 text-slate-800 text-[10px] md:text-sm font-medium whitespace-nowrap">${formatThaiDate(l.date)}</td><td class="px-4 py-3 font-medium text-slate-600 text-xs md:text-sm whitespace-nowrap">${l.employeeName}</td><td class="px-4 py-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full border text-[10px] font-medium ${cMap[l.type]}">${tMap[l.type]}</span></td><td class="px-4 py-3 whitespace-nowrap">${pBadge}</td><td class="px-4 py-3 text-right"><button onclick="deleteRecord('leave_records', '${l.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm">ไม่มีประวัติการลา</td></tr>`;
         }
 
-        // 5. Swaps Table Render
         function renderSwapsTable() {
             const tbody = document.getElementById('swapsTableBody'); let html = '';
             swapsData.forEach(s => {
-                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 font-medium text-slate-800 text-xs whitespace-nowrap">${s.employeeName}</td><td class="px-4 py-3 text-slate-500 text-[10px] md:text-xs whitespace-nowrap"><i class="ph-fill ph-briefcase text-brand-500"></i> ${formatThaiDate(s.originalDate)}</td><td class="px-4 py-3 text-slate-500 text-[10px] md:text-xs whitespace-nowrap"><i class="ph-fill ph-house text-rose-500"></i> ${formatThaiDate(s.newDate)}</td><td class="px-4 py-3 text-right"><button onclick="deleteRecord('day_off_swaps', '${s.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
+                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 font-medium text-slate-800 text-xs md:text-sm whitespace-nowrap">${s.employeeName}</td><td class="px-4 py-3 text-slate-500 text-[10px] md:text-sm whitespace-nowrap"><i class="ph-fill ph-briefcase text-brand-500"></i> ${formatThaiDate(s.originalDate)}</td><td class="px-4 py-3 text-slate-500 text-[10px] md:text-sm whitespace-nowrap"><i class="ph-fill ph-house text-rose-500"></i> ${formatThaiDate(s.newDate)}</td><td class="px-4 py-3 text-right"><button onclick="deleteRecord('day_off_swaps', '${s.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">ไม่มีประวัติสลับวันหยุด</td></tr>`;
         }
 
-        // 6. Holidays Table Render
         function renderHolidaysTable() {
             const tbody = document.getElementById('holidaysTableBody'); let html = '';
             holidaysData.forEach(h => {
                 const pBadge = h.isPaid ? '<span class="text-emerald-600 text-[10px] md:text-xs font-medium"><i class="ph-fill ph-check-circle"></i> จ่ายปกติ</span>' : '<span class="text-slate-400 text-[10px] md:text-xs font-medium"><i class="ph-fill ph-x-circle"></i> ไม่จ่าย</span>';
-                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 text-slate-800 text-[10px] md:text-xs font-medium whitespace-nowrap">${formatThaiDate(h.date)}</td><td class="px-4 py-3 font-medium text-slate-600 text-xs whitespace-nowrap">${h.name}</td><td class="px-4 py-3 whitespace-nowrap">${pBadge}</td><td class="px-4 py-3 text-right"><button onclick="deleteRecord('company_holidays', '${h.id}')" class="text-slate-400 hover:text-red-500 p-2"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
+                html += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group">
+                        <td class="px-4 py-3 text-slate-800 text-[10px] md:text-sm font-medium whitespace-nowrap">${formatThaiDate(h.date)}</td>
+                        <td class="px-4 py-3 font-medium text-slate-600 text-xs md:text-sm whitespace-nowrap">${h.name}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${pBadge}</td>
+                        <td class="px-4 py-3 text-right whitespace-nowrap">
+                            <button onclick="editHoliday('${h.id}')" class="text-slate-400 hover:text-brand-600 p-2 opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-pencil-simple text-base"></i></button>
+                            <button onclick="deleteRecord('company_holidays', '${h.id}')" class="text-slate-400 hover:text-red-500 p-2 opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-trash text-base"></i></button>
+                        </td>
+                    </tr>`;
             });
             tbody.innerHTML = html || `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">ไม่มีข้อมูลวันหยุดร้าน</td></tr>`;
         }
@@ -638,8 +644,8 @@
             if (wSal < 0 || oRate < 0) return showToast('เงินติดลบไม่ได้', 'error');
             const data = { name: document.getElementById('empName').value, position: document.getElementById('empPosition').value, workStartTime: document.getElementById('empStartTime').value, workEndTime: document.getElementById('empEndTime').value, dayOff: document.getElementById('empDayOff').value, weeklySalary: wSal||0, otRate: oRate||0 };
             try {
-                btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin"></i>'; btn.disabled = true;
-                if (editingEmployeeId) { await updateDoc(doc(db, 'employees', editingEmployeeId), data); showToast('อัปเดตสำเร็จ'); } 
+                btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-lg"></i>'; btn.disabled = true;
+                if (editingEmployeeId) { await updateDoc(doc(db, 'employees', editingEmployeeId), data); showToast('อัปเดตพนักงานสำเร็จ'); } 
                 else { data.status = 'out'; await addDoc(collection(db, 'employees'), data); showToast('เพิ่มพนักงานสำเร็จ'); }
                 closeModal('addEmployeeModal'); editingEmployeeId = null;
             } catch(e){ showToast('Error', 'error'); } finally { btn.innerHTML = 'บันทึกข้อมูล'; btn.disabled = false; }
@@ -650,7 +656,7 @@
             const emp = employeesData.find(e => e.id === id); if(!emp) return; selectedEmployee = emp;
             document.getElementById('actionName').innerText = emp.name; document.getElementById('actionPosition').innerText = emp.position; document.getElementById('actionAvatar').innerText = emp.name.substring(0,1);
             const inB = document.getElementById('btnClockIn'); const outB = document.getElementById('btnClockOut');
-            const bC = "flex-1 py-3 rounded-2xl font-medium transition-all flex justify-center items-center gap-1.5 text-sm md:text-base";
+            const bC = "flex-1 py-3 rounded-2xl font-medium transition-all flex justify-center items-center gap-1.5 text-base";
             if(emp.status === 'in') { inB.className=`${bC} bg-slate-100 text-slate-400 cursor-not-allowed border`; inB.innerHTML='<i class="ph-bold ph-check-circle text-lg"></i> เข้างานแล้ว'; inB.disabled=true; outB.className=`${bC} bg-amber-500 text-white shadow-lg shadow-amber-500/30`; outB.innerHTML='<i class="ph-bold ph-sign-out text-lg"></i> กดออกงาน'; outB.disabled=false; }
             else { inB.className=`${bC} bg-emerald-500 text-white shadow-lg shadow-emerald-500/30`; inB.innerHTML='<i class="ph-bold ph-sign-in text-lg"></i> กดเข้างาน'; inB.disabled=false; outB.className=`${bC} bg-slate-100 text-slate-400 cursor-not-allowed border`; outB.innerHTML='<i class="ph-bold ph-check-circle text-lg"></i> ออกงานแล้ว'; outB.disabled=true; }
             inB.onclick = () => recordTime('in'); outB.onclick = () => recordTime('out'); openModal('actionModal');
@@ -700,15 +706,77 @@
         };
 
         // Holidays
-        window.openHolidayModal = function() { document.getElementById('addHolidayForm').reset(); openModal('addHolidayModal'); };
-        window.handleHolidaySubmit = async function(e) {
-            e.preventDefault(); const btn = document.getElementById('saveHolidayBtn');
-            try { btn.disabled=true; btn.innerHTML='<i class="ph-bold ph-spinner animate-spin"></i>'; await addDoc(collection(db, 'company_holidays'), { date: document.getElementById('holidayDate').value, name: document.getElementById('holidayName').value, isPaid: document.getElementById('holidayIsPaid').checked }); showToast('เพิ่มวันหยุดร้านสำเร็จ'); closeModal('addHolidayModal'); } catch(e){showToast('Error','error');} finally{btn.disabled=false; btn.innerHTML='บันทึกวันหยุด';}
+        window.openHolidayModal = function() { 
+            editingHolidayId = null;
+            document.getElementById('holidayModalTitle').innerText = 'เพิ่มวันหยุดร้าน';
+            document.getElementById('addHolidayForm').reset(); 
+            openModal('addHolidayModal'); 
+        };
+        
+        window.editHoliday = function(id) {
+            const h = holidaysData.find(x => x.id === id); if(!h) return;
+            editingHolidayId = id;
+            document.getElementById('holidayModalTitle').innerText = 'แก้ไขวันหยุดร้าน';
+            document.getElementById('holidayDate').value = h.date;
+            document.getElementById('holidayName').value = h.name;
+            document.getElementById('holidayIsPaid').checked = h.isPaid;
+            openModal('addHolidayModal');
         };
 
-        // Deletes
-        window.deleteRecord = async function(col, id) { if(confirm("ลบข้อมูล?")) { try { const {deleteDoc} = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"); await deleteDoc(doc(db, col, id)); showToast('ลบแล้ว'); } catch(e){} } };
-        window.deleteEmployee = async function(id) { if(confirm("ลบพนักงาน? ประวัติจะยังอยู่")) { try { const {deleteDoc} = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"); await deleteDoc(doc(db, 'employees', id)); showToast('ลบแล้ว'); } catch(e){} } };
+        window.handleHolidaySubmit = async function(e) {
+            e.preventDefault(); const btn = document.getElementById('saveHolidayBtn');
+            const data = { date: document.getElementById('holidayDate').value, name: document.getElementById('holidayName').value, isPaid: document.getElementById('holidayIsPaid').checked };
+            try { 
+                btn.disabled=true; btn.innerHTML='<i class="ph-bold ph-spinner animate-spin text-lg"></i>'; 
+                if (editingHolidayId) {
+                    await updateDoc(doc(db, 'company_holidays', editingHolidayId), data);
+                    showToast('แก้ไขวันหยุดร้านสำเร็จ');
+                } else {
+                    await addDoc(collection(db, 'company_holidays'), data); 
+                    showToast('เพิ่มวันหยุดร้านสำเร็จ'); 
+                }
+                closeModal('addHolidayModal'); editingHolidayId = null;
+            } catch(e){showToast('Error','error');} finally{btn.disabled=false; btn.innerHTML='บันทึก';}
+        };
+
+        // --- STATIC DELETES (Fixes missing module issue) ---
+        window.deleteRecord = async function(col, id) { 
+            if(confirm("ยืนยันการลบข้อมูล? (มีผลกับการคำนวณเงินเดือน)")) { 
+                try { 
+                    await deleteDoc(doc(db, col, id)); 
+                    showToast('ลบข้อมูลสำเร็จ'); 
+                } catch(e){ console.error(e); showToast('ไม่สามารถลบข้อมูลได้', 'error'); } 
+            } 
+        };
+
+        // CASCADING DELETE EMPLOYEE
+        window.deleteEmployee = async function(empId) {
+            if(confirm("คำเตือน: การลบพนักงานจะลบข้อมูลประวัติการลงเวลา วันลา และสลับวันหยุดของพนักงานคนนี้ทั้งหมดด้วย! คุณต้องการดำเนินการต่อหรือไม่?")) {
+                showToast('กำลังลบข้อมูลที่เกี่ยวข้อง...', 'success');
+                try {
+                    // Delete Employee Doc
+                    await deleteDoc(doc(db, 'employees', empId));
+
+                    // Cascade Deletes
+                    const logsQuery = query(collection(db, 'time_logs'), where("employeeId", "==", empId));
+                    const logsSnap = await getDocs(logsQuery);
+                    logsSnap.forEach(async (docSnap) => { await deleteDoc(doc(db, 'time_logs', docSnap.id)); });
+
+                    const leavesQuery = query(collection(db, 'leave_records'), where("employeeId", "==", empId));
+                    const leavesSnap = await getDocs(leavesQuery);
+                    leavesSnap.forEach(async (docSnap) => { await deleteDoc(doc(db, 'leave_records', docSnap.id)); });
+
+                    const swapsQuery = query(collection(db, 'day_off_swaps'), where("employeeId", "==", empId));
+                    const swapsSnap = await getDocs(swapsQuery);
+                    swapsSnap.forEach(async (docSnap) => { await deleteDoc(doc(db, 'day_off_swaps', docSnap.id)); });
+
+                    showToast('ลบพนักงานและข้อมูลทั้งหมดแล้ว');
+                } catch(e) { 
+                    console.error("Delete Employee Error:", e);
+                    showToast('เกิดข้อผิดพลาดในการลบข้อมูล', 'error'); 
+                }
+            }
+        };
 
 
         // --- SALARY CALCULATION ENGINE ---
@@ -756,10 +824,10 @@
                     }
                 }
 
-                // 2. Add Paid Leaves (if not already counted as worked)
+                // 2. Add Paid Leaves
                 vLeaves.forEach(lv => { if (lv.employeeId === emp.id && lv.isPaid && !s.daysWorked.has(lv.date)) s.paidLeaveDays++; });
 
-                // 3. Add Paid Holidays (if not already counted as worked)
+                // 3. Add Paid Holidays
                 vHolidays.forEach(h => { if (!s.daysWorked.has(h.date)) s.paidHolidayDays++; });
 
                 // 4. Calculate Money
@@ -782,13 +850,13 @@
                 html += `
                     <tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none">
                         <td class="px-4 md:px-6 py-3 md:py-4 font-medium text-slate-800 whitespace-nowrap"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-brand-100 text-brand-600 flex justify-center items-center text-[10px] font-bold shrink-0">${s.emp.name.substring(0,1)}</div>${s.emp.name}</div></td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-semibold">${s.daysWorked.size}</span></td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-rose-50 text-rose-600 px-2 py-0.5 rounded text-xs font-semibold">${s.paidLeaveDays>0?'+'+s.paidLeaveDays:'-'}</span></td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-xs font-semibold">${s.paidHolidayDays>0?'+'+s.paidHolidayDays:'-'}</span></td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><div class="text-xs text-slate-600">${wh}h ${wm}m</div>${s.otMin>0?`<div class="text-[10px] text-amber-600 mt-0.5">+ OT ${Math.floor(s.otMin/60)}h ${s.otMin%60}m</div>`:''}</td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-right text-slate-600 whitespace-nowrap text-xs md:text-sm">฿${fc(s.basePay)}</td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-right text-amber-600 whitespace-nowrap text-xs md:text-sm">฿${fc(s.otPay)}</td>
-                        <td class="px-4 md:px-6 py-3 md:py-4 text-right font-bold text-brand-600 whitespace-nowrap text-sm md:text-base">฿${fc(s.totalPay)}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-sm font-semibold">${s.daysWorked.size}</span></td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-rose-50 text-rose-600 px-2 py-0.5 rounded text-sm font-semibold">${s.paidLeaveDays>0?'+'+s.paidLeaveDays:'-'}</span></td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><span class="inline-flex bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-sm font-semibold">${s.paidHolidayDays>0?'+'+s.paidHolidayDays:'-'}</span></td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap"><div class="text-sm text-slate-600">${wh}h ${wm}m</div>${s.otMin>0?`<div class="text-[10px] text-amber-600 mt-0.5">+ OT ${Math.floor(s.otMin/60)}h ${s.otMin%60}m</div>`:''}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-right text-slate-600 whitespace-nowrap text-sm md:text-base">฿${fc(s.basePay)}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-right text-amber-600 whitespace-nowrap text-sm md:text-base">฿${fc(s.otPay)}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-right font-bold text-brand-600 whitespace-nowrap text-base md:text-lg">฿${fc(s.totalPay)}</td>
                     </tr>`;
             });
             tbody.innerHTML = html;
@@ -812,14 +880,12 @@
         window.addEventListener('online', updateOnlineStatus); window.addEventListener('offline', updateOnlineStatus);
         if(!navigator.onLine) updateOnlineStatus();
 
-        // Setup Default Dates for Salary
         window.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             document.getElementById('salaryStartDate').value = formatDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
             document.getElementById('salaryEndDate').value = formatDateStr(today);
         });
 
-        // View Switcher Utility
         window.switchView = function(viewId) {
             document.querySelectorAll('.view-section').forEach(v => v.classList.add('hidden')); 
             document.getElementById(`view-${viewId}`).classList.remove('hidden'); 
