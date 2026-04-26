@@ -172,12 +172,12 @@
             <div id="view-logs" class="view-section hidden fade-in">
                 <div class="bg-white rounded-2xl md:rounded-3xl shadow-soft border border-slate-100 overflow-hidden">
                     <div class="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center gap-4">
-                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800">ประวัติการลงเวลาล่าสุด</h2><p class="text-sm text-slate-500">ข้อมูลเข้า-ออกงานเรียงตามเวลา (แสดง 50 รายการล่าสุด)</p></div>
+                        <div class="flex flex-col gap-1"><h2 class="text-base md:text-lg font-semibold text-slate-800">ประวัติการลงเวลาล่าสุด</h2><p class="text-sm text-slate-500">แสดงการเข้า-ออกงาน จัดกลุ่มสรุปตามรายวัน</p></div>
                         <button onclick="openAddPastLogModal()" class="bg-brand-50 hover:bg-brand-100 text-brand-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 md:gap-2 shrink-0"><i class="ph-bold ph-clock-counter-clockwise text-lg"></i> <span class="hidden sm:inline">เพิ่มย้อนหลัง</span><span class="sm:hidden">เพิ่ม</span></button>
                     </div>
                     <div class="overflow-x-auto pb-2">
-                        <table class="w-full text-left border-collapse min-w-[500px]">
-                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่-เวลา</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">ประเภท</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
+                        <table class="w-full text-left border-collapse min-w-[700px]">
+                            <thead><tr class="bg-slate-50 text-slate-500 text-sm"><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">วันที่</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">พนักงาน</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">เวลาเข้า</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium whitespace-nowrap">เวลาออก</th><th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right whitespace-nowrap">จัดการ</th></tr></thead>
                             <tbody id="logsTableBody" class="divide-y divide-slate-100 text-sm"></tbody>
                         </table>
                     </div>
@@ -563,8 +563,39 @@
 
         function renderEmployeeTable() {
             const tbody = document.getElementById('employeeTableBody'); let html = '';
+            
+            const today = new Date(); const todayStr = formatDateStr(today);
+            const todayHoliday = holidaysData.find(h => h.date === todayStr);
+
             employeesData.forEach(emp => {
-                const sBadge = emp.status === 'in' ? '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] md:text-xs font-medium border border-emerald-100">ทำงาน</span>' : '<span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-[10px] md:text-xs font-medium border border-slate-200">ออกงาน</span>';
+                const isWorking = emp.status === 'in';
+                let sBadge = '';
+
+                if (isWorking) {
+                    sBadge = '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] md:text-xs font-medium border border-emerald-100">ทำงาน</span>';
+                } else {
+                    const todayLeave = leavesData.find(l => l.employeeId === emp.id && l.date === todayStr);
+                    const todayDayOfWeek = today.getDay().toString();
+                    let isRegularDayOff = emp.dayOff === todayDayOfWeek;
+                    
+                    const swapToWork = swapsData.find(s => s.employeeId === emp.id && s.originalDate === todayStr);
+                    const swapToOff = swapsData.find(s => s.employeeId === emp.id && s.newDate === todayStr);
+                    
+                    if (swapToWork) isRegularDayOff = false;
+                    if (swapToOff) isRegularDayOff = true;
+
+                    if (todayLeave) {
+                        const tMap = {'sick':'ลาป่วย','personal':'ลากิจ','vacation':'ลาพักร้อน'};
+                        sBadge = `<span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 text-[10px] md:text-xs font-medium border border-rose-100">${tMap[todayLeave.type]}</span>`;
+                    } else if (todayHoliday) {
+                        sBadge = `<span class="px-2.5 py-1 rounded-full bg-purple-50 text-purple-600 text-[10px] md:text-xs font-medium border border-purple-100">วันหยุดร้าน</span>`;
+                    } else if (isRegularDayOff) {
+                        sBadge = `<span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] md:text-xs font-medium border border-indigo-100">วันหยุดประจำ</span>`;
+                    } else {
+                        sBadge = '<span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-500 text-[10px] md:text-xs font-medium border border-slate-200">ออกงาน</span>';
+                    }
+                }
+
                 const wt = (emp.workStartTime && emp.workEndTime) ? `${emp.workStartTime}-${emp.workEndTime}` : 'ไม่ได้ตั้งเวลา';
                 html += `
                     <tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group">
@@ -579,12 +610,104 @@
 
         function renderLogsTable() {
             const tbody = document.getElementById('logsTableBody'); let html = '';
-            logsData.slice(0, 50).forEach(log => {
-                const dateStr = log.timestamp ? log.timestamp.toDate().toLocaleString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' }) : '-';
-                const badge = log.action === 'in' ? '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] md:text-xs font-medium"><i class="ph-bold ph-sign-in"></i> เข้างาน</span>' : '<span class="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-600 text-[10px] md:text-xs font-medium"><i class="ph-bold ph-sign-out"></i> ออกงาน</span>';
-                html += `<tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group"><td class="px-4 py-3 md:py-4 text-slate-500 text-[10px] md:text-sm whitespace-nowrap">${dateStr}</td><td class="px-4 py-3 md:py-4 font-medium text-slate-800 text-xs md:text-sm whitespace-nowrap">${log.employeeName}</td><td class="px-4 py-3 md:py-4 whitespace-nowrap">${badge}</td><td class="px-4 py-3 md:py-4 text-right whitespace-nowrap"><button onclick="editLogTime('${log.id}')" class="text-slate-400 hover:text-brand-600 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-pencil-simple text-base"></i></button><button onclick="deleteRecord('time_logs', '${log.id}')" class="text-slate-400 hover:text-red-500 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100"><i class="ph-bold ph-trash text-base"></i></button></td></tr>`;
+            
+            // จัดกลุ่มข้อมูลประวัติ (เข้าและออก) ให้อยู่ในแถวเดียวกันตามวันที่และพนักงาน
+            const groupedLogs = {};
+            logsData.forEach(log => {
+                if (!log.timestamp) return;
+                const d = log.timestamp.toDate();
+                const dateStr = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                const key = `${dateStr}_${log.employeeId}`;
+
+                if (!groupedLogs[key]) {
+                    groupedLogs[key] = {
+                        dateStr: dateStr,
+                        rawDate: new Date(d.getFullYear(), d.getMonth(), d.getDate()), // สำหรับเรียงลำดับ
+                        employeeName: log.employeeName,
+                        employeeId: log.employeeId,
+                        inLog: null,
+                        outLog: null,
+                        allIds: []
+                    };
+                }
+
+                // เก็บ ID ทั้งหมดในกลุ่ม เผื่อใช้สำหรับลบข้อมูลของวันนั้นๆ
+                groupedLogs[key].allIds.push(log.id);
+
+                // ค้นหาเวลาเข้าที่ "เช้าที่สุด" และ เวลาออกที่ "ดึกที่สุด" ของวัน
+                if (log.action === 'in') {
+                    if (!groupedLogs[key].inLog || d < groupedLogs[key].inLog.timestamp.toDate()) {
+                        groupedLogs[key].inLog = log;
+                    }
+                } else if (log.action === 'out') {
+                    if (!groupedLogs[key].outLog || d > groupedLogs[key].outLog.timestamp.toDate()) {
+                        groupedLogs[key].outLog = log;
+                    }
+                }
             });
-            tbody.innerHTML = html || `<tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">ไม่มีประวัติ</td></tr>`;
+
+            // แปลง Object เป็น Array แล้วเรียงวันที่ล่าสุดขึ้นก่อน
+            const displayLogs = Object.values(groupedLogs).sort((a, b) => b.rawDate - a.rawDate);
+
+            displayLogs.slice(0, 50).forEach(group => {
+                const inTime = group.inLog ? group.inLog.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-';
+                const outTime = group.outLog ? group.outLog.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-';
+                
+                // คำนวณเวลาทำงานรวม
+                let durationHtml = '';
+                if (group.inLog && group.outLog) {
+                    const diffMins = Math.floor((group.outLog.timestamp.toDate() - group.inLog.timestamp.toDate()) / 60000);
+                    if (diffMins > 0) {
+                        const hrs = Math.floor(diffMins / 60);
+                        const mins = diffMins % 60;
+                        durationHtml = `<div class="text-[10px] text-slate-500 mt-0.5 font-medium bg-slate-100 px-2 py-0.5 rounded-md w-fit"><i class="ph-fill ph-clock text-brand-500"></i> ทำงาน ${hrs} ชม. ${mins} นาที</div>`;
+                    }
+                }
+
+                // สร้างบล็อกของเวลาเข้า (พร้อมปุ่มแก้ไขเวลาเข้านั้นๆ)
+                let inHtml = '<span class="text-slate-300">-</span>';
+                if (group.inLog) {
+                    inHtml = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-emerald-600 font-semibold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">${inTime} น.</span>
+                        <button onclick="editLogTime('${group.inLog.id}')" class="text-slate-400 hover:text-emerald-600 transition-colors p-1" title="แก้ไขเวลาเข้า"><i class="ph-bold ph-pencil-simple text-base"></i></button>
+                    </div>`;
+                }
+
+                // สร้างบล็อกของเวลาออก (พร้อมปุ่มแก้ไขเวลาออกนั้นๆ)
+                let outHtml = '<span class="text-slate-300">-</span>';
+                if (group.outLog) {
+                    outHtml = `
+                    <div class="flex items-center gap-2">
+                        <span class="text-amber-600 font-semibold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">${outTime} น.</span>
+                        <button onclick="editLogTime('${group.outLog.id}')" class="text-slate-400 hover:text-amber-600 transition-colors p-1" title="แก้ไขเวลาออก"><i class="ph-bold ph-pencil-simple text-base"></i></button>
+                    </div>`;
+                }
+
+                const initials = group.employeeName.substring(0,1);
+                const idsJoined = group.allIds.join(',');
+
+                html += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-50 md:border-none group transition-colors">
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-slate-600 font-medium text-xs md:text-sm whitespace-nowrap">${group.dateStr}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex justify-center items-center font-bold text-xs shrink-0 shadow-inner">${initials}</div>
+                                <div class="flex flex-col gap-0.5">
+                                    <span class="font-medium text-slate-800 text-xs md:text-sm">${group.employeeName}</span>
+                                    ${durationHtml}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">${inHtml}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">${outHtml}</td>
+                        <td class="px-4 md:px-6 py-3 md:py-4 text-right whitespace-nowrap">
+                            <button onclick="deleteDailyLogs('${idsJoined}')" class="text-slate-400 hover:text-red-500 p-2 rounded-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all" title="ลบประวัติของวันนี้"><i class="ph-bold ph-trash text-base"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            
+            tbody.innerHTML = html || `<tr><td colspan="5" class="py-8 text-center text-slate-400 text-sm">ไม่มีประวัติการลงเวลา</td></tr>`;
         }
 
         function renderLeavesTable() {
@@ -822,6 +945,7 @@
             } catch(e){showToast('Error','error');} finally{btn.disabled=false; btn.innerHTML='บันทึก';}
         };
 
+        // --- STATIC DELETES ---
         window.deleteRecord = async function(col, id) { 
             if(confirm("ยืนยันการลบข้อมูล? (มีผลกับการคำนวณเงินเดือน)")) { 
                 try { await deleteDoc(doc(db, col, id)); showToast('ลบข้อมูลสำเร็จ'); } 
@@ -829,6 +953,23 @@
             } 
         };
 
+        window.deleteDailyLogs = async function(idsStr) {
+            if(confirm("ยืนยันการลบประวัติการลงเวลาของวันนี้? (ข้อมูลเข้า-ออกทั้งหมดของพนักงานคนนี้ในวันที่เลือกจะถูกลบทิ้ง)")) {
+                try {
+                    const ids = idsStr.split(',');
+                    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                    for (let id of ids) {
+                        if(id) await deleteDoc(doc(db, 'time_logs', id));
+                    }
+                    showToast('ลบประวัติสำเร็จ');
+                } catch(e) {
+                    console.error(e);
+                    showToast('ไม่สามารถลบข้อมูลได้', 'error');
+                }
+            }
+        };
+
+        // CASCADING DELETE EMPLOYEE
         window.deleteEmployee = async function(empId) {
             if(confirm("คำเตือน: การลบพนักงานจะลบข้อมูลประวัติทั้งหมดด้วย! ดำเนินการต่อหรือไม่?")) {
                 showToast('กำลังลบข้อมูลที่เกี่ยวข้อง...', 'success');
