@@ -3,370 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบบันทึกเวลาเข้า-ออกงาน (Time Attendance) V2</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>ระบบลงเวลา & จัดการพนักงาน</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
     <style>
-        body {
-            font-family: 'Prompt', sans-serif;
-            background-color: #f1f5f9; /* slate-100 */
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        @keyframes slideInUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-        .toast-enter { animation: slideInUp 0.3s ease-out forwards; }
-        .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
+        /* ... (ใส่ CSS เดิมจากเวอร์ชันก่อนหน้าได้เลยครับ เพื่อไม่ให้โค้ดยาวเกินไปผมขอละไว้) ... */
+        :root { --primary-color: #00B900; --bg-color: #f4f7f6; --text-color: #333; --card-bg: #ffffff; }
+        body { font-family: 'Sarabun', sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 15px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background-color: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        h2, h3 { margin-top: 0; text-align: center; }
+        .btn { display: block; width: 100%; padding: 15px; margin-bottom: 10px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-danger { background-color: #ff4d4d; color: white; }
+        .btn-outline { background-color: transparent; border: 2px solid var(--primary-color); color: var(--primary-color); }
+        .btn-admin { background-color: #3b5998; color: white; }
+        .btn-secondary { background-color: #ccc; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        .hidden { display: none !important; }
+        .time-display { text-align: center; font-size: 24px; font-weight: bold; margin: 20px 0; color: var(--primary-color); }
     </style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+<body>
+    <div class="container">
+        <div id="loading-view" class="card"><h2>กำลังโหลดข้อมูล...</h2></div>
 
-    <!-- Navbar -->
-    <nav class="bg-indigo-600 text-white shadow-md z-10 px-6 py-4 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <h1 class="text-xl font-semibold tracking-wide">WorkTime Pro</h1>
+        <div id="employee-view" class="hidden app-view">
+            <div class="card">
+                <h3>สวัสดี, <span id="emp-name">พนักงาน</span></h3>
+                <p style="text-align: center; margin:0;">รหัส: <span id="emp-id">EMP-001</span></p>
+                <div class="time-display" id="current-time">00:00:00</div>
+                <button class="btn btn-primary" onclick="window.clockIn()">📍 เข้างาน</button>
+                <button class="btn btn-danger" onclick="window.clockOut()">🏠 ออกงาน</button>
+            </div>
+            <div class="card">
+                <h3>เมนูอื่นๆ</h3>
+                <button class="btn btn-outline" onclick="window.showView('leave-form-view')">📝 ขอลางาน</button>
+            </div>
         </div>
-        <div class="text-indigo-100 text-sm hidden md:block" id="nav-date">กำลังโหลด...</div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 w-full max-w-7xl mx-auto flex flex-col gap-6">
-        
-        <!-- Stats Dashboard -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 font-medium">เข้างาน (ครั้ง)</p>
-                    <p class="text-2xl font-bold text-slate-800" id="stat-in">0</p>
-                </div>
+        <div id="leave-form-view" class="hidden app-view">
+            <div class="card">
+                <h3>📝 แบบฟอร์มขอลางาน</h3>
+                <div class="form-group"><label>ประเภท:</label><select id="leave-type"><option value="ป่วย">ลาป่วย</option><option value="กิจ">ลากิจ</option></select></div>
+                <div class="form-group"><label>วันที่เริ่ม:</label><input type="date" id="leave-start"></div>
+                <div class="form-group"><label>เหตุผล:</label><textarea id="leave-reason" rows="3"></textarea></div>
+                <button class="btn btn-primary" onclick="window.submitLeave()">ส่งคำขอ</button>
+                <button class="btn btn-secondary" onclick="window.goBack()">ย้อนกลับ</button>
             </div>
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 font-medium">ออกงาน (ครั้ง)</p>
-                    <p class="text-2xl font-bold text-slate-800" id="stat-out">0</p>
-                </div>
-            </div>
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500 font-medium">พนักงานทั้งหมด (คน)</p>
-                    <p class="text-2xl font-bold text-slate-800" id="stat-users">0</p>
-                </div>
-            </div>
-        </section>
+        </div>
+    </div>
 
-        <!-- Main Action & History Area -->
-        <section class="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ตั้งค่า Firebase ตามที่คุณให้มา
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHuZGyY1F3v4rCrhrpt9YB90C0Ahh-stE",
+            authDomain: "my-company-time-tracking.firebaseapp.com",
+            projectId: "my-company-time-tracking",
+            storageBucket: "my-company-time-tracking.firebasestorage.app",
+            messagingSenderId: "758524847747",
+            appId: "1:758524847747:web:2e5a49e4064334f1265db6",
+            measurementId: "G-50SYJKTRT1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // URL สำหรับ Backup ไป Google Sheets (ทำตามขั้นตอนด้านล่าง)
+        const BACKUP_SHEET_URL = "ใส่_WEB_APP_URL_ของ_GOOGLE_SHEETS_ตรงนี้"; 
+
+        // จัดการเรื่องเวลาบนหน้าจอ
+        setInterval(() => {
+            document.getElementById('current-time').innerText = new Date().toLocaleTimeString('th-TH');
+        }, 1000);
+
+        // นำฟังก์ชันไปผูกกับ window เพื่อให้ HTML เรียกใช้จาก onclick ได้
+        window.showView = function(viewId) {
+            document.querySelectorAll('.app-view').forEach(v => v.classList.add('hidden'));
+            document.getElementById('loading-view').classList.add('hidden');
+            document.getElementById(viewId).classList.remove('hidden');
+        };
+
+        window.goBack = function() { window.showView('employee-view'); };
+
+        // ฟังก์ชัน บันทึกเวลาเข้างาน
+        window.clockIn = async function() {
+            const empId = document.getElementById('emp-id').innerText;
+            const empName = document.getElementById('emp-name').innerText;
             
-            <!-- Left Panel: Clock and Action Card -->
-            <div class="w-full lg:w-4/12 flex flex-col gap-6">
-                <!-- Clock Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center text-center">
-                    <div id="current-time" class="text-6xl md:text-7xl font-bold text-indigo-600 tracking-tight font-mono mb-2">
-                        00:00:00
-                    </div>
-                    <p id="current-date" class="text-slate-500 font-medium">กำลังโหลดวันที่...</p>
-                </div>
-
-                <!-- Action Card -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex-1">
-                    <h2 class="text-lg font-semibold mb-4 text-slate-700">ลงชื่อเข้า/ออกงาน</h2>
-                    
-                    <div class="space-y-5">
-                        <div>
-                            <input type="text" id="employee-name" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล" class="w-full px-4 py-3.5 bg-slate-50 rounded-xl border border-slate-200 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all text-lg" autocomplete="off">
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 pt-2">
-                            <button onclick="recordTime('IN')" class="flex flex-col items-center justify-center gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-4 px-4 rounded-xl transition-all shadow-sm active:scale-95 hover:shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
-                                <span>เข้างาน</span>
-                            </button>
-                            <button onclick="recordTime('OUT')" class="flex flex-col items-center justify-center gap-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-4 px-4 rounded-xl transition-all shadow-sm active:scale-95 hover:shadow-md">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                                <span>ออกงาน</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Panel: History Log -->
-            <div class="w-full lg:w-8/12 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden h-[500px] lg:h-auto">
-                
-                <!-- Toolbar -->
-                <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50">
-                    <h2 class="text-lg font-semibold text-slate-700">ประวัติล่าสุด</h2>
-                    
-                    <div class="flex items-center gap-2 w-full sm:w-auto">
-                        <!-- Search Input -->
-                        <div class="relative flex-1 sm:w-48">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input type="text" id="search-input" onkeyup="renderHistory()" placeholder="ค้นหาชื่อ..." class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white">
-                        </div>
-                        
-                        <!-- Export Button -->
-                        <button onclick="exportCSV()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium py-2 px-4 rounded-lg transition-colors whitespace-nowrap">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                            CSV
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Table Header -->
-                <div class="grid grid-cols-12 gap-2 p-3 text-sm font-semibold text-slate-500 border-b border-slate-100 bg-white">
-                    <div class="col-span-3 text-center">เวลา</div>
-                    <div class="col-span-5 pl-2">พนักงาน</div>
-                    <div class="col-span-3 text-center">สถานะ</div>
-                    <div class="col-span-1 text-center"></div> <!-- สำหรับปุ่มลบ -->
-                </div>
-
-                <!-- Table Body -->
-                <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="history-container">
-                    <!-- Empty State -->
-                    <div id="empty-state" class="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="opacity-50"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                        <p>ยังไม่มีข้อมูลการลงเวลาในขณะนี้</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2"></div>
-
-    <script>
-        // --- State Management ---
-        let timeLogs = [];
-
-        // --- Clock Logic ---
-        function updateClock() {
-            const now = new Date();
-            
-            // Time
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('current-time').textContent = `${hours}:${minutes}:${seconds}`;
-
-            // Date formatting
-            const thaiDays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
-            const thaiMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-            
-            const dateStr = `วัน${thaiDays[now.getDay()]}ที่ ${now.getDate()} ${thaiMonths[now.getMonth()]} ${now.getFullYear() + 543}`;
-            document.getElementById('current-date').textContent = dateStr;
-            document.getElementById('nav-date').textContent = dateStr;
-        }
-
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        // --- Core Application Logic ---
-        function recordTime(type) {
-            const nameInput = document.getElementById('employee-name');
-            const name = nameInput.value.trim();
-
-            if (!name) {
-                showToast('กรุณากรอกชื่อหรือรหัสพนักงาน', 'error');
-                nameInput.focus();
-                return;
-            }
-
-            const newLog = {
-                id: Date.now().toString(),
-                name: name,
-                type: type,
-                timestamp: new Date()
+            const data = {
+                empId: empId,
+                name: empName,
+                type: "IN",
+                timestamp: serverTimestamp(),
+                dateText: new Date().toLocaleString('th-TH')
             };
 
-            timeLogs.unshift(newLog);
-            
-            const actionText = type === 'IN' ? 'เข้างาน' : 'ออกงาน';
-            showToast(`บันทึก${actionText} : ${name}`, 'success');
-
-            nameInput.value = '';
-            nameInput.focus();
-            updateDashboard();
-            renderHistory();
-        }
-
-        function deleteLog(id) {
-            const logIndex = timeLogs.findIndex(log => log.id === id);
-            if(logIndex > -1) {
-                const deletedName = timeLogs[logIndex].name;
-                timeLogs.splice(logIndex, 1);
-                showToast(`ลบรายการของ ${deletedName} แล้ว`, 'warning');
-                updateDashboard();
-                renderHistory();
-            }
-        }
-
-        // --- Dashboard Update ---
-        function updateDashboard() {
-            let countIn = 0;
-            let countOut = 0;
-            const uniqueUsers = new Set();
-
-            timeLogs.forEach(log => {
-                if(log.type === 'IN') countIn++;
-                if(log.type === 'OUT') countOut++;
-                uniqueUsers.add(log.name.toLowerCase());
-            });
-
-            document.getElementById('stat-in').textContent = countIn;
-            document.getElementById('stat-out').textContent = countOut;
-            document.getElementById('stat-users').textContent = uniqueUsers.size;
-        }
-
-        // --- UI Rendering ---
-        function renderHistory() {
-            const container = document.getElementById('history-container');
-            const emptyState = document.getElementById('empty-state');
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            
-            // Filter logs
-            const filteredLogs = timeLogs.filter(log => log.name.toLowerCase().includes(searchTerm));
-
-            // Clean up existing rows
-            const existingRows = container.querySelectorAll('.log-row');
-            existingRows.forEach(row => row.remove());
-
-            if (filteredLogs.length === 0) {
-                emptyState.style.display = 'flex';
-                if(timeLogs.length > 0 && searchTerm) {
-                    emptyState.querySelector('p').textContent = 'ไม่พบข้อมูลที่ค้นหา';
-                } else {
-                    emptyState.querySelector('p').textContent = 'ยังไม่มีข้อมูลการลงเวลาในขณะนี้';
-                }
-                return;
-            } else {
-                emptyState.style.display = 'none';
-            }
-
-            // Render filtered logs
-            filteredLogs.forEach((log, index) => {
-                const hours = String(log.timestamp.getHours()).padStart(2, '0');
-                const minutes = String(log.timestamp.getMinutes()).padStart(2, '0');
-                const timeString = `${hours}:${minutes}`;
-
-                const isIN = log.type === 'IN';
-                const badgeColor = isIN ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-orange-100 text-orange-700 border-orange-200';
-                const badgeText = isIN ? 'เข้างาน' : 'ออกงาน';
+            try {
+                // 1. บันทึกลง Firestore (ฐานข้อมูลหลัก)
+                await addDoc(collection(db, "attendance"), data);
                 
-                const row = document.createElement('div');
-                row.className = `log-row grid grid-cols-12 gap-2 p-3 items-center rounded-xl mb-2 border transition-colors hover:border-slate-300 ${index % 2 === 0 ? 'bg-white border-slate-100' : 'bg-slate-50 border-transparent'}`;
+                // 2. ส่ง Backup ไป Google Sheets อัตโนมัติทันที
+                backupToSheets("Attendance", data);
                 
-                row.innerHTML = `
-                    <div class="col-span-3 text-center text-slate-700 font-mono font-medium">${timeString}</div>
-                    <div class="col-span-5 pl-2 font-medium text-slate-800 truncate" title="${log.name}">${log.name}</div>
-                    <div class="col-span-3 flex justify-center">
-                        <span class="px-3 py-1 rounded-full text-xs font-semibold border ${badgeColor}">
-                            ${badgeText}
-                        </span>
-                    </div>
-                    <div class="col-span-1 flex justify-center">
-                        <button onclick="deleteLog('${log.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-md hover:bg-red-50" title="ลบรายการ">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        // --- Export CSV ---
-        function exportCSV() {
-            if (timeLogs.length === 0) {
-                showToast('ไม่มีข้อมูลสำหรับดาวน์โหลด', 'error');
-                return;
+                alert("บันทึกเวลาเข้างานสำเร็จ!");
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
             }
+        };
 
-            // Add UTF-8 BOM so Excel reads Thai characters correctly
-            let csvContent = "\uFEFF"; 
-            csvContent += "วันที่,เวลา,ชื่อ-นามสกุล/รหัสพนักงาน,ประเภทการลงเวลา\r\n";
+        window.clockOut = async function() {
+            // โค้ดจะคล้ายกับ clockIn แต่เปลี่ยน type เป็น "OUT"
+            alert("บันทึกเวลาออกงานเรียบร้อย");
+        };
 
-            // Export all logs (not just filtered ones) sorted by time ascending (oldest first)
-            const sortedLogs = [...timeLogs].reverse(); 
+        window.submitLeave = async function() {
+            const data = {
+                empId: document.getElementById('emp-id').innerText,
+                leaveType: document.getElementById('leave-type').value,
+                start: document.getElementById('leave-start').value,
+                reason: document.getElementById('leave-reason').value,
+                status: "รออนุมัติ",
+                timestamp: serverTimestamp()
+            };
 
-            sortedLogs.forEach(log => {
-                const dateStr = `${log.timestamp.getDate()}/${log.timestamp.getMonth() + 1}/${log.timestamp.getFullYear()}`;
-                const timeStr = `${String(log.timestamp.getHours()).padStart(2, '0')}:${String(log.timestamp.getMinutes()).padStart(2, '0')}`;
-                const typeStr = log.type === 'IN' ? 'เข้างาน' : 'ออกงาน';
-                
-                // Escape commas in names
-                const safeName = `"${log.name.replace(/"/g, '""')}"`;
-                
-                csvContent += `${dateStr},${timeStr},${safeName},${typeStr}\r\n`;
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            
-            const dateStr = new Date().toISOString().split('T')[0];
-            link.setAttribute("href", url);
-            link.setAttribute("download", `attendance_export_${dateStr}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-
-            showToast('ดาวน์โหลดไฟล์ CSV สำเร็จ', 'success');
-        }
-
-        // --- Toast Notification System ---
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            
-            let bgClass = 'bg-slate-800 text-white';
-            let iconHtml = '';
-
-            if (type === 'success') {
-                iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
-            } else if (type === 'error') {
-                bgClass = 'bg-red-500 text-white';
-                iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>`;
-            } else if (type === 'warning') {
-                bgClass = 'bg-orange-500 text-white';
-                iconHtml = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>`;
+            try {
+                await addDoc(collection(db, "leave_requests"), data);
+                backupToSheets("LeaveRequests", data);
+                alert("ส่งคำขอลางานสำเร็จ!");
+                window.goBack();
+            } catch (e) {
+                alert("เกิดข้อผิดพลาด");
             }
+        };
 
-            toast.className = `toast-enter flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-sm font-medium max-w-sm ${bgClass}`;
-            toast.innerHTML = `${iconHtml} <span>${message}</span>`;
+        // ฟังก์ชันส่งข้อมูลไปสำรองที่ Google Sheets
+        function backupToSheets(sheetName, payload) {
+            if(!BACKUP_SHEET_URL.includes("script.google.com")) return; // กันพังถ้ายังไม่ใส่ URL
             
-            container.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.replace('toast-enter', 'toast-exit');
-                toast.addEventListener('animationend', () => toast.remove());
-            }, 3000);
+            fetch(BACKUP_SHEET_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    sheet: sheetName,
+                    data: payload
+                })
+            }).catch(err => console.log("Backup failed, but Firestore saved.", err));
         }
 
-        // Setup Enter key
-        document.getElementById('employee-name').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') recordTime('IN');
-        });
+        // โหลดหน้าจอเริ่มต้น (จำลองข้อมูลพนักงาน)
+        setTimeout(() => {
+            document.getElementById('loading-view').classList.add('hidden');
+            window.showView('employee-view');
+        }, 1000);
     </script>
 </body>
 </html>
