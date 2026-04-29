@@ -1,312 +1,451 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, LogIn, LogOut, Clock, CheckCircle2, Navigation2, Fingerprint, Sun, Moon, Coffee, History as HistoryIcon } from 'lucide-react';
-
-// 1. Import Firebase SDK
-import { initializeApp } from "firebase/app";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  serverTimestamp,
-  onSnapshot
-} from "firebase/firestore";
-import { 
-  getAuth, 
-  signInAnonymously, 
-  signInWithCustomToken, 
-  onAuthStateChanged 
-} from "firebase/auth";
-
-// 2. Firebase Configuration (รองรับทั้ง Canvas Environment และ Local)
-const firebaseConfig = typeof __firebase_config !== 'undefined' 
-  ? JSON.parse(__firebase_config) 
-  : {
-      apiKey: "AIzaSyBHuZGyY1F3v4rCrhrpt9YB90C0Ahh-stE",
-      authDomain: "my-company-time-tracking.firebaseapp.com",
-      projectId: "my-company-time-tracking",
-      storageBucket: "my-company-time-tracking.firebasestorage.app",
-      messagingSenderId: "758524847747",
-      appId: "1:758524847747:web:2e5a49e4064334f1265db6",
-      measurementId: "G-50SYJKTRT1"
-    };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-export default function App() {
-  // --- States ---
-  const [user, setUser] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [isCheckedIn, setIsCheckedIn] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [checkInTime, setCheckInTime] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [isHolding, setIsHolding] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const holdIntervalRef = useRef(null);
-
-  // ข้อมูลพนักงาน
-  const employeeId = "EMP-1042";
-
-  // --- Effects ---
-
-  // A. จัดการ Authentication (ต้องทำก่อนดึงข้อมูล Firestore เพื่อป้องกัน Permission Denied)
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Authentication Error:", error);
-      }
-    };
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Time Attendance UI</title>
     
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
-  }, []);
-
-  // B. โหลดข้อมูลจาก Firestore เมื่อยืนยันตัวตนสำเร็จ
-  useEffect(() => {
-    if (!user) return; // รอให้ User ยืนยันตัวตนก่อน
-
-    // ใช้ Path แบบ Private สำหรับเก็บข้อมูลพนักงานแต่ละคนแยกกัน
-    const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'attendance_logs');
-
-    // ดึงข้อมูลทั้งหมดมาจัดเรียงใน Memory เพื่อหลีกเลี่ยงการใช้ Index แบบซับซ้อน (ป้องก้น Error)
-    const unsubscribe = onSnapshot(logsRef, (snapshot) => {
-      const fetchedLogs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // แปลง Firebase Timestamp เป็น JS Date
-        time: doc.data().timestamp?.toDate() || new Date()
-      }));
-
-      // เรียงลำดับจากใหม่ไปเก่า และดึงมาแค่ 10 รายการล่าสุด
-      fetchedLogs.sort((a, b) => b.time - a.time);
-      const limitedLogs = fetchedLogs.slice(0, 10);
-      
-      setLogs(limitedLogs);
-
-      // ตรวจสอบสถานะล่าสุดว่า "เข้างาน" ค้างไว้หรือไม่
-      if (limitedLogs.length > 0 && limitedLogs[0].type === 'IN') {
-        setIsCheckedIn(true);
-        setCheckInTime(limitedLogs[0].time);
-      } else {
-        setIsCheckedIn(false);
-        setCheckInTime(null);
-      }
-    }, (error) => {
-      console.error("Snapshot error:", error);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
-
-  // C. อัปเดตนาฬิกาหลักและตัวจับเวลาทำงาน
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now);
-      
-      if (isCheckedIn && checkInTime) {
-        const diff = Math.floor((now - checkInTime) / 1000);
-        const hours = String(Math.floor(diff / 3600)).padStart(2, '0');
-        const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-        const seconds = String(diff % 60).padStart(2, '0');
-        setElapsedTime(`${hours}:${minutes}:${seconds}`);
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isCheckedIn, checkInTime]);
-
-  // --- Logic Functions ---
-
-  const handlePunch = async () => {
-    if (!user) return;
-    const type = isCheckedIn ? 'OUT' : 'IN';
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    try {
-      const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'attendance_logs');
-      await addDoc(logsRef, {
-        employeeId: employeeId,
-        type: type,
-        timestamp: serverTimestamp(),
-        location: 'สำนักงานใหญ่ HQ (GPS Verified)',
-        device: 'Web Browser'
-      });
-      // หมายเหตุ: State logs และ isCheckedIn จะถูกอัปเดตอัตโนมัติผ่าน onSnapshot ใน useEffect B
-    } catch (error) {
-      console.error("Error saving to Firestore: ", error);
-    }
-  };
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  // --- UI Helper Functions ---
-  const timeString = currentTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-  const dateString = currentTime.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' });
-  const currentHour = currentTime.getHours();
-
-  let greeting = 'สวัสดี';
-  let GreetingIcon = Sun;
-  if (currentHour < 12) { greeting = 'อรุณสวัสดิ์'; GreetingIcon = Sun; }
-  else if (currentHour < 18) { greeting = 'สวัสดีตอนบ่าย'; GreetingIcon = Coffee; }
-  else { greeting = 'สวัสดีตอนเย็น'; GreetingIcon = Moon; }
-
-  const startHold = (e) => {
-    e.preventDefault(); 
-    if (showSuccess) return;
-    setIsHolding(true);
-    let progress = 0;
-    holdIntervalRef.current = setInterval(() => {
-      progress += 2;
-      if (progress >= 100) {
-        clearInterval(holdIntervalRef.current);
-        setShowSuccess(true);
-        handlePunch(); // เรียกฟังก์ชันบันทึกข้อมูล
-        setTimeout(() => {
-          setShowSuccess(false);
-          setHoldProgress(0);
-          setIsHolding(false);
-        }, 1500);
-      } else { setHoldProgress(progress); }
-    }, 10);
-  };
-
-  const endHold = () => {
-    if (showSuccess) return;
-    clearInterval(holdIntervalRef.current);
-    setHoldProgress(0);
-    setIsHolding(false);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center sm:p-6 font-sans select-none relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-[10%] -left-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob transition-colors duration-1000 ${isCheckedIn ? 'bg-emerald-400' : 'bg-blue-400'}`}></div>
-        <div className={`absolute top-[20%] -right-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000 transition-colors duration-1000 ${isCheckedIn ? 'bg-teal-300' : 'bg-indigo-400'}`}></div>
-      </div>
-
-      <div className="w-full max-w-[420px] h-[100dvh] sm:h-[850px] bg-white/70 backdrop-blur-3xl sm:rounded-[40px] shadow-2xl border border-white/80 flex flex-col relative overflow-hidden z-10">
-        
-        {/* Header */}
-        <div className="p-6 pb-2 flex justify-between items-center">
-          <div>
-            <p className="text-slate-500 font-medium text-xs flex items-center gap-1.5 uppercase tracking-wider">
-              {greeting} <GreetingIcon size={12} className="text-orange-400" />
-            </p>
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight">สมชาย ใจดี</h2>
-          </div>
-          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
-            <img src="https://ui-avatars.com/api/?name=Somchai&background=eff6ff&color=2563eb&bold=true" alt="Profile" />
-          </div>
-        </div>
-
-        {/* Chips */}
-        <div className="px-6 flex gap-2 mt-1">
-          <div className="bg-white/80 px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-500 shadow-sm border border-white">
-            {dateString}
-          </div>
-          <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm transition-colors ${user ? 'bg-emerald-500 text-white' : 'bg-slate-300 text-slate-600'}`}>
-            {user ? 'CONNECTED TO CLOUD' : 'CONNECTING...'}
-          </div>
-        </div>
-
-        {/* Clock & Timer */}
-        <div className="flex flex-col items-center justify-center flex-grow text-center">
-          <h1 className="text-[5.5rem] font-light tracking-tighter text-slate-800 leading-none tabular-nums">
-            {timeString}
-          </h1>
-          
-          <div className={`mt-6 h-20 transition-all duration-500 ${isCheckedIn ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-            <span className="text-emerald-600 font-black text-xs tracking-widest uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-              Working Now
-            </span>
-            <div className="text-4xl font-black text-slate-800 mt-2 tabular-nums">{elapsedTime}</div>
-          </div>
-        </div>
-
-        {/* Hold Button */}
-        <div className="py-10 flex justify-center items-center">
-          <div 
-            className="relative w-[180px] h-[180px] flex items-center justify-center cursor-pointer"
-            onMouseDown={startHold} onMouseUp={endHold} onMouseLeave={endHold} onTouchStart={startHold} onTouchEnd={endHold}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
-          >
-            <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
-              <circle cx="90" cy="90" r="82" className="text-slate-200/50" strokeWidth="8" fill="none" />
-              <circle 
-                cx="90" cy="90" r="82" 
-                className={`stroke-current transition-all duration-75 ${isCheckedIn ? 'text-rose-500' : 'text-blue-600'}`} 
-                strokeWidth="8" fill="none" strokeDasharray="515" 
-                strokeDashoffset={515 - (515 * holdProgress / 100)} strokeLinecap="round" 
-              />
-            </svg>
-
-            <div className={`w-[136px] h-[136px] rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-xl
-              ${!user ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70' : showSuccess ? 'bg-emerald-500 text-white scale-110' : isCheckedIn ? 'bg-white text-rose-500' : 'bg-white text-blue-600'}`}>
-              {showSuccess ? (
-                <CheckCircle2 size={48} className="animate-bounce" />
-              ) : (
-                <>
-                  {isCheckedIn ? <LogOut size={36} /> : <Fingerprint size={42} />}
-                  <span className="mt-2 font-bold text-slate-800">{isCheckedIn ? 'เลิกงาน' : 'เข้างาน'}</span>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase">{!user ? 'Connecting...' : isHolding ? 'Recording...' : 'Hold Me'}</span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* History Area */}
-        <div className="bg-white/90 backdrop-blur-md flex-1 px-6 pt-5 pb-8 rounded-t-[40px] shadow-[0_-20px_50px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col h-[30%]">
-          <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4" />
-          <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 text-sm uppercase tracking-wider">
-            <HistoryIcon size={16} className="text-slate-400" /> ประวัติ 10 รายการล่าสุด
-          </h3>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {logs.length === 0 ? (
-              <p className="text-center text-slate-400 text-xs py-10 italic">No cloud logs found...</p>
-            ) : (
-              logs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${log.type === 'IN' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-500'}`}>
-                      {log.type === 'IN' ? <LogIn size={18} /> : <LogOut size={18} />}
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-700 text-sm">{log.type === 'IN' ? 'Clock In' : 'Clock Out'}</p>
-                      <p className="text-[10px] text-slate-400 font-medium">{log.location}</p>
-                    </div>
-                  </div>
-                  <div className="font-bold text-slate-800 text-sm tabular-nums">
-                    {log.time.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      <style dangerouslySetInnerHTML={{__html: `
+    <style>
         @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
         }
         .animate-blob { animation: blob 10s infinite; }
         .animation-delay-2000 { animation-delay: 2s; }
-      `}} />
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-100 font-sans select-none overflow-hidden sm:overflow-auto">
+
+    <div class="min-h-screen flex flex-col items-center justify-center sm:p-6 relative overflow-hidden">
+        
+        <!-- Animated Background -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div id="blob1" class="absolute -top-[10%] -left-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob transition-colors duration-1000 bg-blue-400"></div>
+            <div id="blob2" class="absolute top-[20%] -right-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000 transition-colors duration-1000 bg-indigo-400"></div>
+        </div>
+
+        <div class="w-full max-w-[420px] h-[100dvh] sm:h-[850px] bg-white/70 backdrop-blur-3xl sm:rounded-[40px] shadow-2xl border border-white/80 flex flex-col relative overflow-hidden z-10">
+            
+            <!-- Header -->
+            <div class="p-6 pb-2 flex justify-between items-center">
+                <div>
+                    <p class="text-slate-500 font-medium text-xs flex items-center gap-1.5 uppercase tracking-wider">
+                        <span id="greeting-text">สวัสดี</span> 
+                        <span id="greeting-icon-container" class="text-orange-400 w-3 h-3 flex items-center justify-center">
+                            <i data-lucide="sun" class="w-3 h-3"></i>
+                        </span>
+                    </p>
+                    <h2 class="text-xl font-bold text-slate-800 tracking-tight mt-0.5">สมชาย ใจดี</h2>
+                </div>
+                <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm">
+                    <img src="https://ui-avatars.com/api/?name=Somchai&background=eff6ff&color=2563eb&bold=true" alt="Profile" />
+                </div>
+            </div>
+
+            <!-- Chips -->
+            <div class="px-6 flex gap-2 mt-1">
+                <div id="date-display" class="bg-white/80 px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-500 shadow-sm border border-white">
+                    กำลังโหลด...
+                </div>
+                <div id="conn-status" class="px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm transition-colors bg-slate-300 text-slate-600">
+                    CONNECTING...
+                </div>
+            </div>
+
+            <!-- Clock & Timer -->
+            <div class="flex flex-col items-center justify-center flex-grow text-center mt-4">
+                <h1 id="clock-display" class="text-[5.5rem] font-light tracking-tighter text-slate-800 leading-none tabular-nums">
+                    00:00
+                </h1>
+                
+                <div id="timer-container" class="mt-6 h-20 transition-all duration-500 opacity-0 scale-95 pointer-events-none">
+                    <span class="text-emerald-600 font-black text-xs tracking-widest uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                        Working Now
+                    </span>
+                    <div id="elapsed-time" class="text-4xl font-black text-slate-800 mt-2 tabular-nums drop-shadow-sm">00:00:00</div>
+                </div>
+            </div>
+
+            <!-- Hold Button -->
+            <div class="py-10 flex justify-center items-center min-h-[220px]">
+                <div id="hold-area" class="relative w-[180px] h-[180px] flex items-center justify-center cursor-pointer" style="-webkit-tap-highlight-color: transparent;">
+                    
+                    <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-md">
+                        <circle cx="90" cy="90" r="82" class="text-slate-200/50 backdrop-blur-sm" stroke-width="8" fill="none" stroke="currentColor" />
+                        <circle id="progress-ring" cx="90" cy="90" r="82" class="text-blue-600 transition-all duration-75" stroke-width="8" fill="none" stroke="currentColor" stroke-dasharray="515" stroke-dashoffset="515" stroke-linecap="round" />
+                    </svg>
+
+                    <div id="btn-inner" class="w-[136px] h-[136px] rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-xl bg-slate-200 text-slate-400 cursor-not-allowed opacity-70 border-2 border-transparent">
+                        
+                        <div id="btn-icon-container" class="mb-1 flex items-center justify-center">
+                            <i data-lucide="fingerprint" class="w-10 h-10"></i>
+                        </div>
+                        <span id="btn-text" class="font-bold text-slate-800 text-lg tracking-wide">เข้างาน</span>
+                        <span id="btn-subtext" class="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider">Connecting...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Area -->
+            <div class="bg-white/90 backdrop-blur-xl flex-1 px-6 pt-5 pb-8 rounded-t-[40px] shadow-[0_-20px_50px_rgba(0,0,0,0.05)] overflow-hidden flex flex-col h-[35%] relative">
+                <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+                <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-4 text-sm uppercase tracking-wider">
+                    <i data-lucide="history" class="w-4 h-4 text-slate-400"></i> ประวัติ 10 รายการล่าสุด
+                </h3>
+                
+                <div id="history-list" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 pb-4">
+                    <p class="text-center text-slate-400 text-xs py-10 italic">No cloud logs found...</p>
+                </div>
+            </div>
+        </div>
     </div>
-  );
-}
+
+    <!-- Firebase & Application Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase Configuration (รองรับ Canvas Environment)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyBHuZGyY1F3v4rCrhrpt9YB90C0Ahh-stE",
+                authDomain: "my-company-time-tracking.firebaseapp.com",
+                projectId: "my-company-time-tracking",
+                storageBucket: "my-company-time-tracking.firebasestorage.app",
+                messagingSenderId: "758524847747",
+                appId: "1:758524847747:web:2e5a49e4064334f1265db6",
+                measurementId: "G-50SYJKTRT1"
+            };
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const employeeId = "EMP-1042";
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // State Variables
+        let user = null;
+        let isCheckedIn = false;
+        let logs = [];
+        let checkInTime = null;
+        
+        let holdProgress = 0;
+        let isHolding = false;
+        let showSuccess = false;
+        let holdIntervalId = null;
+        let unsubscribeLogs = null;
+
+        // DOM Elements
+        const clockDisplay = document.getElementById('clock-display');
+        const dateDisplay = document.getElementById('date-display');
+        const greetingText = document.getElementById('greeting-text');
+        const greetingIconContainer = document.getElementById('greeting-icon-container');
+        const connStatus = document.getElementById('conn-status');
+        const timerContainer = document.getElementById('timer-container');
+        const elapsedTimeDisplay = document.getElementById('elapsed-time');
+        
+        const blob1 = document.getElementById('blob1');
+        const blob2 = document.getElementById('blob2');
+        
+        const holdArea = document.getElementById('hold-area');
+        const progressRing = document.getElementById('progress-ring');
+        const btnInner = document.getElementById('btn-inner');
+        const btnIconContainer = document.getElementById('btn-icon-container');
+        const btnText = document.getElementById('btn-text');
+        const btnSubtext = document.getElementById('btn-subtext');
+        
+        const historyList = document.getElementById('history-list');
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        // --- Core Logic ---
+
+        // 1. Time & Greeting Updater
+        function updateTime() {
+            const now = new Date();
+            clockDisplay.textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            dateDisplay.textContent = now.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' });
+
+            // Greeting Logic
+            const hour = now.getHours();
+            let greeting = 'สวัสดี';
+            let iconName = 'sun';
+            let iconColor = 'text-amber-500';
+
+            if (hour < 12) {
+                greeting = 'อรุณสวัสดิ์'; iconName = 'sun'; iconColor = 'text-amber-500';
+            } else if (hour < 18) {
+                greeting = 'สวัสดีตอนบ่าย'; iconName = 'coffee'; iconColor = 'text-orange-500';
+            } else {
+                greeting = 'สวัสดีตอนเย็น'; iconName = 'moon'; iconColor = 'text-indigo-400';
+            }
+
+            greetingText.textContent = greeting;
+            if(!greetingIconContainer.querySelector(`[data-lucide="${iconName}"]`)) {
+                greetingIconContainer.className = `${iconColor} w-3 h-3 flex items-center justify-center`;
+                greetingIconContainer.innerHTML = `<i data-lucide="${iconName}" class="w-3 h-3"></i>`;
+                lucide.createIcons();
+            }
+
+            // Elapsed Time Logic
+            if (isCheckedIn && checkInTime) {
+                const diff = Math.floor((now - checkInTime) / 1000);
+                const hours = String(Math.floor(diff / 3600)).padStart(2, '0');
+                const minutes = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+                const seconds = String(diff % 60).padStart(2, '0');
+                elapsedTimeDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+            }
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // 2. UI Updater based on State
+        function updateUIState() {
+            // Connection Status
+            if (user) {
+                connStatus.textContent = 'CONNECTED TO CLOUD';
+                connStatus.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm transition-colors bg-emerald-500 text-white';
+            } else {
+                connStatus.textContent = 'CONNECTING...';
+                connStatus.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm transition-colors bg-slate-300 text-slate-600';
+            }
+
+            // Timer Container Visibility
+            if (isCheckedIn) {
+                timerContainer.className = 'mt-6 h-20 transition-all duration-500 opacity-100 scale-100';
+            } else {
+                timerContainer.className = 'mt-6 h-20 transition-all duration-500 opacity-0 scale-95 pointer-events-none absolute';
+            }
+
+            // Background Blobs
+            if (isCheckedIn) {
+                blob1.className = 'absolute -top-[10%] -left-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob transition-colors duration-1000 bg-emerald-400';
+                blob2.className = 'absolute top-[20%] -right-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000 transition-colors duration-1000 bg-teal-300';
+            } else {
+                blob1.className = 'absolute -top-[10%] -left-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob transition-colors duration-1000 bg-blue-400';
+                blob2.className = 'absolute top-[20%] -right-[10%] w-96 h-96 rounded-full mix-blend-multiply filter blur-[100px] opacity-40 animate-blob animation-delay-2000 transition-colors duration-1000 bg-indigo-400';
+            }
+
+            // Progress Ring Color (Fixed SVG className issue)
+            progressRing.setAttribute('class', `text-${isCheckedIn ? 'rose-500' : 'blue-600'} transition-all duration-75`);
+
+            // Hold Button Logic
+            let btnClasses = 'w-[136px] h-[136px] rounded-full flex flex-col items-center justify-center transition-all duration-300 shadow-xl relative overflow-hidden ';
+            
+            if (!user) {
+                btnClasses += 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-70 border-2 border-transparent';
+                btnIconContainer.innerHTML = '<i data-lucide="fingerprint" class="w-[42px] h-[42px]"></i>';
+                btnText.textContent = 'เข้างาน';
+                btnText.className = 'mt-2 font-bold text-slate-400 text-lg tracking-wide';
+                btnSubtext.textContent = 'Connecting...';
+                btnSubtext.className = 'text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider';
+            } else if (showSuccess) {
+                btnClasses += 'bg-emerald-500 text-white scale-110 border-2 border-transparent';
+                btnIconContainer.innerHTML = '<i data-lucide="check-circle-2" class="w-12 h-12 animate-[bounce-in_0.5s_cubic-bezier(0.175,0.885,0.32,1.275)] drop-shadow-md"></i>';
+                btnText.textContent = 'สำเร็จ!';
+                btnText.className = 'mt-2 font-bold text-white text-sm tracking-wide';
+                btnSubtext.textContent = '';
+            } else {
+                btnClasses += isHolding ? 'scale-95 shadow-inner ' : 'scale-100 hover:scale-105 hover:shadow-2xl ';
+                if (isCheckedIn) {
+                    btnClasses += 'bg-gradient-to-b from-white to-rose-50 text-rose-600 border-2 border-white';
+                    btnIconContainer.innerHTML = '<i data-lucide="log-out" class="w-9 h-9"></i>';
+                    btnText.textContent = 'เลิกงาน';
+                } else {
+                    btnClasses += 'bg-gradient-to-b from-white to-blue-50 text-blue-600 border-2 border-white';
+                    btnIconContainer.innerHTML = '<i data-lucide="fingerprint" class="w-[42px] h-[42px]"></i>';
+                    btnText.textContent = 'เข้างาน';
+                }
+                btnText.className = 'mt-2 font-bold text-slate-800 text-lg tracking-wide';
+                btnSubtext.textContent = isHolding ? 'Recording...' : 'Hold Me';
+                btnSubtext.className = `text-[10px] font-bold uppercase mt-0.5 tracking-wider ${isHolding ? 'text-blue-500 animate-pulse' : 'text-slate-400'}`;
+            }
+
+            btnInner.className = btnClasses;
+            lucide.createIcons();
+            
+            // Update Ring Offset
+            const offset = 515 - (515 * holdProgress / 100);
+            progressRing.style.strokeDashoffset = offset;
+        }
+
+        // 3. Render History List
+        function renderHistory() {
+            if (logs.length === 0) {
+                historyList.innerHTML = '<p class="text-center text-slate-400 text-xs py-10 italic">No cloud logs found...</p>';
+                return;
+            }
+
+            let html = '';
+            logs.forEach((log, index) => {
+                const timeStr = log.time.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+                const isFirst = index === 0;
+                const borderClass = isFirst ? (log.type === 'IN' ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-rose-500') : '';
+                
+                html += `
+                <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white/80 border border-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] backdrop-blur-md transition-all ${borderClass}">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-inner ${log.type === 'IN' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-500'}">
+                            <i data-lucide="${log.type === 'IN' ? 'log-in' : 'log-out'}" class="w-[18px] h-[18px]"></i>
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-700 text-sm">${log.type === 'IN' ? 'เข้างานสำเร็จ' : 'เลิกงานสำเร็จ'}</p>
+                            <p class="text-[11px] text-slate-400 font-medium mt-0.5">${log.location}</p>
+                        </div>
+                    </div>
+                    <div class="font-bold text-slate-800 text-base tabular-nums tracking-tight">
+                        ${timeStr}
+                    </div>
+                </div>`;
+            });
+            
+            historyList.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        // 4. Firestore Write Logic
+        async function handlePunch() {
+            if (!user) return;
+            const type = isCheckedIn ? 'OUT' : 'IN';
+            
+            try {
+                const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'attendance_logs');
+                await addDoc(logsRef, {
+                    employeeId: employeeId,
+                    type: type,
+                    timestamp: serverTimestamp(),
+                    location: 'สำนักงานใหญ่ HQ (GPS Verified)',
+                    device: 'Web Browser'
+                });
+            } catch (error) {
+                console.error("Error saving to Firestore: ", error);
+            }
+        }
+
+        // 5. Hold Button Event Handlers
+        function startHold(e) {
+            e.preventDefault();
+            if (showSuccess || !user) return;
+            isHolding = true;
+            holdProgress = 0;
+            
+            holdIntervalId = setInterval(() => {
+                holdProgress += 2;
+                if (holdProgress >= 100) {
+                    clearInterval(holdIntervalId);
+                    showSuccess = true;
+                    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                    
+                    updateUIState();
+                    handlePunch();
+                    
+                    setTimeout(() => {
+                        showSuccess = false;
+                        holdProgress = 0;
+                        isHolding = false;
+                        updateUIState();
+                    }, 1500);
+                } else {
+                    updateUIState();
+                }
+            }, 10);
+            updateUIState();
+        }
+
+        function endHold() {
+            if (showSuccess || !user) return;
+            clearInterval(holdIntervalId);
+            holdProgress = 0;
+            isHolding = false;
+            updateUIState();
+        }
+
+        // Add Listeners
+        holdArea.addEventListener('mousedown', startHold);
+        holdArea.addEventListener('mouseup', endHold);
+        holdArea.addEventListener('mouseleave', endHold);
+        holdArea.addEventListener('touchstart', startHold, {passive: false});
+        holdArea.addEventListener('touchend', endHold);
+
+        // 6. Authentication & Data Fetching
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Authentication Error:", error);
+            }
+        }
+
+        onAuthStateChanged(auth, (currentUser) => {
+            user = currentUser;
+            updateUIState();
+
+            if (user) {
+                // Fetch Data
+                const logsRef = collection(db, 'artifacts', appId, 'users', user.uid, 'attendance_logs');
+                
+                if (unsubscribeLogs) unsubscribeLogs();
+                
+                unsubscribeLogs = onSnapshot(logsRef, (snapshot) => {
+                    const fetchedLogs = snapshot.docs.map(doc => {
+                        const data = doc.data();
+                        return {
+                            id: doc.id,
+                            ...data,
+                            time: data.timestamp ? data.timestamp.toDate() : new Date()
+                        };
+                    });
+
+                    fetchedLogs.sort((a, b) => b.time - a.time);
+                    logs = fetchedLogs.slice(0, 10);
+                    
+                    if (logs.length > 0 && logs[0].type === 'IN') {
+                        isCheckedIn = true;
+                        checkInTime = logs[0].time;
+                    } else {
+                        isCheckedIn = false;
+                        checkInTime = null;
+                    }
+                    
+                    updateTime();
+                    updateUIState();
+                    renderHistory();
+                }, (error) => {
+                    console.error("Snapshot error:", error);
+                });
+            } else {
+                if (unsubscribeLogs) {
+                    unsubscribeLogs();
+                    unsubscribeLogs = null;
+                }
+            }
+        });
+
+        // Bootstrap App
+        initAuth();
+        updateUIState();
+
+    </script>
+</body>
+</html>
