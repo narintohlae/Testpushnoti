@@ -249,6 +249,7 @@
                     <div class="flex-1 overflow-hidden flex flex-col bg-white border-t border-slate-100">
                         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex justify-between items-center shadow-sm z-10 shrink-0">
                             <h3 class="font-bold text-slate-800 flex items-center gap-2 text-xs sm:text-sm uppercase tracking-wider"><i data-lucide="activity" class="w-4 h-4 text-slate-400"></i> ความเคลื่อนไหวทั้งหมด</h3>
+                            <button onclick="window.openManualLogModal()" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-colors flex items-center gap-1 shrink-0"><i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> บันทึกแทน</button>
                         </div>
                         <div id="owner-history-list" class="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4 space-y-2 sm:space-y-3 custom-scrollbar pb-6"></div>
                     </div>
@@ -410,6 +411,40 @@
             </div>
 
             <!-- ========================================== -->
+            <!-- MANUAL LOG MODAL (NEW) -->
+            <!-- ========================================== -->
+            <div id="manual-log-modal" class="absolute inset-0 z-[57] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+                <div class="bg-white w-full max-w-xs rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col" id="manual-log-modal-content">
+                    <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                        <h3 class="font-bold text-base text-slate-800 flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4 text-blue-500"></i> บันทึกเวลาแทนพนักงาน</h3>
+                        <button onclick="window.closeManualLogModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">พนักงาน</label>
+                            <select id="manual-log-emp" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 outline-none text-sm font-medium">
+                                <!-- Options populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">สถานะ</label>
+                            <select id="manual-log-type-select" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 outline-none text-sm font-medium">
+                                <option value="IN">เข้างาน (Clock In)</option>
+                                <option value="OUT">เลิกงาน (Clock Out)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">วันและเวลา <span class="text-rose-500">*</span></label>
+                            <input type="datetime-local" id="manual-log-time-select" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-medium text-sm tabular-nums">
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-slate-100 bg-white shrink-0">
+                        <button id="btn-save-manual-log" onclick="window.saveManualLog()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/20 transition-all flex justify-center items-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูล</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
             <!-- PIN PAD OVERLAY -->
             <!-- ========================================== -->
             <div id="pin-overlay" class="absolute inset-0 z-[60] bg-slate-900/40 backdrop-blur-md flex flex-col items-center justify-end sm:justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
@@ -563,15 +598,12 @@
             if(!currentEmpId) document.getElementById('login-overlay').classList.add('opacity-0', 'pointer-events-none');
             fetchStoreSettings();
             
-            // Set default payroll dates to current week
             const today = new Date();
-            const dayOfWeek = today.getDay() || 7; // Convert Sun(0) to 7
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - dayOfWeek + 1);
-            const sunday = new Date(monday);
-            sunday.setDate(monday.getDate() + 6);
+            const dayOfWeek = today.getDay() || 7;
+            const monday = new Date(today); monday.setDate(today.getDate() - dayOfWeek + 1);
+            const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
             
-            document.getElementById('payroll-start').value = monday.toLocaleDateString('en-CA'); // format YYYY-MM-DD
+            document.getElementById('payroll-start').value = monday.toLocaleDateString('en-CA');
             document.getElementById('payroll-end').value = sunday.toLocaleDateString('en-CA');
             window.calculatePayroll();
         };
@@ -602,7 +634,7 @@
                 btn.className = 'w-full py-3.5 sm:py-4 bg-emerald-500 text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold shadow-lg transition-all flex justify-center items-center gap-2';
                 btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> สำเร็จ'; lucide.createIcons();
                 setTimeout(()=>{ btn.className = 'w-full py-3.5 sm:py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold shadow-lg shadow-slate-800/20 transition-all flex justify-center items-center gap-2'; btn.innerHTML='<i data-lucide="save" class="w-4 h-4 sm:w-5 sm:h-5"></i> บันทึกการตั้งค่าร้าน'; btn.disabled=false; lucide.createIcons(); }, 1500);
-                window.calculatePayroll(); // Update payroll with new settings
+                window.calculatePayroll();
             } catch(e){ alert('เกิดข้อผิดพลาด'); btn.disabled=false; }
         };
 
@@ -649,6 +681,63 @@
                 if(user) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'attendance_logs', docId));
             }
         };
+
+        // --- MANUAL LOG FEATURE (OWNER) ---
+        window.openManualLogModal = function() {
+            const select = document.getElementById('manual-log-emp');
+            select.innerHTML = allEmployees.map(e => `<option value="${e.empId}">${e.empName} (${e.empId})</option>`).join('');
+            
+            const d = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            const dtStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            document.getElementById('manual-log-time-select').value = dtStr;
+
+            const m = document.getElementById('manual-log-modal'), c = document.getElementById('manual-log-modal-content');
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => { c.classList.remove('scale-95'); c.classList.add('scale-100'); }, 10);
+        };
+
+        window.closeManualLogModal = function() {
+            const m = document.getElementById('manual-log-modal'), c = document.getElementById('manual-log-modal-content');
+            c.classList.remove('scale-100'); c.classList.add('scale-95');
+            setTimeout(() => { m.classList.add('opacity-0', 'pointer-events-none'); }, 200);
+        };
+
+        window.saveManualLog = async function() {
+            if(!user) return;
+            const empId = document.getElementById('manual-log-emp').value;
+            const type = document.getElementById('manual-log-type-select').value;
+            const timeStr = document.getElementById('manual-log-time-select').value;
+
+            if(!empId || !timeStr) return alert('กรุณาระบุข้อมูลให้ครบถ้วน');
+
+            const emp = allEmployees.find(e => e.empId === empId);
+            if(!emp) return alert('ไม่พบข้อมูลพนักงาน');
+
+            const btn = document.getElementById('btn-save-manual-log');
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> บันทึก...';
+            btn.disabled = true;
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'attendance_logs'), {
+                    employeeId: emp.empId,
+                    employeeName: emp.empName,
+                    type: type,
+                    timestamp: new Date(timeStr),
+                    location: 'บันทึกแทนโดยเจ้าของร้าน',
+                    device: 'Owner Dashboard'
+                });
+                window.closeManualLogModal();
+            } catch(e) {
+                console.error(e);
+                alert('เกิดข้อผิดพลาดในการบันทึก');
+            } finally {
+                btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> บันทึกข้อมูล';
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+        };
+
 
         window.openModal = function(docId = '', empId = '', empName = '', empPin = '0000', wage = '', otRate = '', offDaysStr = null) {
             document.getElementById('modal-doc-id').value = docId; document.getElementById('modal-emp-id').value = empId; document.getElementById('modal-emp-name').value = empName;
@@ -702,39 +791,27 @@
                 return;
             }
 
-            const startDate = new Date(startInput);
-            startDate.setHours(0,0,0,0);
-            const endDate = new Date(endInput);
-            endDate.setHours(23,59,59,999);
+            const startDate = new Date(startInput); startDate.setHours(0,0,0,0);
+            const endDate = new Date(endInput); endDate.setHours(23,59,59,999);
 
-            // Filter logs within date range
             const periodLogs = allLogs.filter(log => log.time >= startDate && log.time <= endDate);
-            
-            // Group by employee -> then by date (YYYY-MM-DD)
             const payrollData = {};
             
             allEmployees.forEach(emp => {
                 payrollData[emp.empId] = {
-                    name: emp.empName,
-                    wage: Number(emp.wage) || 0,
-                    otRate: Number(emp.otRate) || 0,
-                    dailyRecords: {},
-                    totalWorkDays: 0,
-                    totalOtHours: 0,
-                    totalPay: 0,
-                    hasMissingOut: false
+                    name: emp.empName, wage: Number(emp.wage) || 0, otRate: Number(emp.otRate) || 0,
+                    dailyRecords: {}, totalWorkDays: 0, totalOtHours: 0, totalPay: 0, hasMissingOut: false
                 };
             });
 
             periodLogs.forEach(log => {
-                if(!payrollData[log.employeeId]) return; // Skip if employee deleted
-                const dateStr = log.time.toLocaleDateString('en-CA'); // YYYY-MM-DD local
+                if(!payrollData[log.employeeId]) return;
+                const dateStr = log.time.toLocaleDateString('en-CA'); 
                 
                 if (!payrollData[log.employeeId].dailyRecords[dateStr]) {
                     payrollData[log.employeeId].dailyRecords[dateStr] = { inTime: null, outTime: null };
                 }
                 
-                // Track earliest IN and latest OUT for that day
                 if (log.type === 'IN') {
                     if (!payrollData[log.employeeId].dailyRecords[dateStr].inTime || log.time < payrollData[log.employeeId].dailyRecords[dateStr].inTime) {
                         payrollData[log.employeeId].dailyRecords[dateStr].inTime = log.time;
@@ -748,20 +825,15 @@
 
             let grandTotal = 0;
 
-            // Calculate per employee
             for (const empId in payrollData) {
                 const emp = payrollData[empId];
-                
                 for (const dateStr in emp.dailyRecords) {
                     const record = emp.dailyRecords[dateStr];
-                    
                     if (record.inTime) {
                         if (record.outTime) {
-                            // Completed a day
                             emp.totalWorkDays += 1;
                             emp.totalPay += emp.wage;
 
-                            // Calculate OT
                             const [endH, endM] = (storeSettings.workEnd || '18:00').split(':');
                             const expectedEnd = new Date(record.outTime);
                             expectedEnd.setHours(parseInt(endH), parseInt(endM), 0, 0);
@@ -771,14 +843,11 @@
                             const otGrace = storeSettings.otGrace || 0;
 
                             if (diffMins >= otGrace && emp.otRate > 0) {
-                                // OT is paid precisely by hour decimal
                                 const otHours = diffMins / 60;
                                 emp.totalOtHours += otHours;
                                 emp.totalPay += (otHours * emp.otRate);
                             }
-
                         } else {
-                            // Missed OUT punch
                             emp.hasMissingOut = true;
                         }
                     }
@@ -786,55 +855,35 @@
                 grandTotal += emp.totalPay;
             }
 
-            // Render UI
             document.getElementById('payroll-grand-total').textContent = `฿${Math.round(grandTotal).toLocaleString()}`;
             
             let html = '';
             for (const empId in payrollData) {
                 const emp = payrollData[empId];
-                if (emp.totalWorkDays === 0 && !emp.hasMissingOut) continue; // Skip if no work done
+                if (emp.totalWorkDays === 0 && !emp.hasMissingOut) continue;
 
                 html += `
                 <div class="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-sm border ${emp.hasMissingOut ? 'border-rose-300' : 'border-slate-100'}">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2 sm:gap-3">
-                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center shrink-0">
-                                <i data-lucide="user" class="w-4 h-4"></i>
-                            </div>
-                            <div>
-                                <p class="font-bold text-slate-800 text-sm">${emp.name}</p>
-                                <p class="text-[9px] sm:text-[10px] text-slate-500">ค่าแรง ฿${emp.wage}/วัน | OT ฿${emp.otRate}/ชม.</p>
-                            </div>
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center shrink-0"><i data-lucide="user" class="w-4 h-4"></i></div>
+                            <div><p class="font-bold text-slate-800 text-sm">${emp.name}</p><p class="text-[9px] sm:text-[10px] text-slate-500">ค่าแรง ฿${emp.wage}/วัน | OT ฿${emp.otRate}/ชม.</p></div>
                         </div>
-                        <div class="text-right">
-                            <p class="font-black text-emerald-600 text-base sm:text-lg tabular-nums tracking-tight">฿${Math.round(emp.totalPay).toLocaleString()}</p>
-                        </div>
+                        <div class="text-right"><p class="font-black text-emerald-600 text-base sm:text-lg tabular-nums tracking-tight">฿${Math.round(emp.totalPay).toLocaleString()}</p></div>
                     </div>
-                    
                     <div class="grid grid-cols-2 gap-2">
-                        <div class="bg-slate-50 rounded-lg p-2 flex justify-between items-center">
-                            <span class="text-[10px] text-slate-500 font-bold">วันทำงาน</span>
-                            <span class="text-xs font-black text-slate-700">${emp.totalWorkDays} <span class="text-[9px] font-normal">วัน</span></span>
-                        </div>
-                        <div class="bg-slate-50 rounded-lg p-2 flex justify-between items-center">
-                            <span class="text-[10px] text-slate-500 font-bold">ล่วงเวลา (OT)</span>
-                            <span class="text-xs font-black text-slate-700">${emp.totalOtHours.toFixed(1)} <span class="text-[9px] font-normal">ชม.</span></span>
-                        </div>
+                        <div class="bg-slate-50 rounded-lg p-2 flex justify-between items-center"><span class="text-[10px] text-slate-500 font-bold">วันทำงาน</span><span class="text-xs font-black text-slate-700">${emp.totalWorkDays} <span class="text-[9px] font-normal">วัน</span></span></div>
+                        <div class="bg-slate-50 rounded-lg p-2 flex justify-between items-center"><span class="text-[10px] text-slate-500 font-bold">ล่วงเวลา (OT)</span><span class="text-xs font-black text-slate-700">${emp.totalOtHours.toFixed(1)} <span class="text-[9px] font-normal">ชม.</span></span></div>
                     </div>
-                    
                     ${emp.hasMissingOut ? `<p class="text-[10px] text-rose-500 font-bold mt-2 text-center bg-rose-50 py-1 rounded"><i data-lucide="alert-triangle" class="w-3 h-3 inline"></i> มีการบันทึกเวลาที่ไม่สมบูรณ์ (ลืมออกงาน)</p>` : ''}
                 </div>`;
             }
 
-            if (html === '') {
-                listContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-10 opacity-60"><i data-lucide="banknote" class="w-12 h-12 text-slate-400 mb-3"></i><p class="text-sm font-medium text-slate-500">ไม่มีข้อมูลการทำงานในรอบบิลนี้</p></div>';
-            } else {
-                listContainer.innerHTML = html;
-            }
+            if (html === '') listContainer.innerHTML = '<div class="flex flex-col items-center justify-center py-10 opacity-60"><i data-lucide="banknote" class="w-12 h-12 text-slate-400 mb-3"></i><p class="text-sm font-medium text-slate-500">ไม่มีข้อมูลการทำงานในรอบบิลนี้</p></div>';
+            else listContainer.innerHTML = html;
             lucide.createIcons();
         };
 
-        // Attach event listeners to date inputs to auto-calculate
         document.getElementById('payroll-start').addEventListener('change', window.calculatePayroll);
         document.getElementById('payroll-end').addEventListener('change', window.calculatePayroll);
 
