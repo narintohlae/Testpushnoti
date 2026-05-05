@@ -8,13 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root { --app-bg: #f4f5f9; }
-        /* บังคับความสูง 100dvh ตัด Scroll หน้าหลักทิ้งเด็ดขาด */
         body { 
             font-family: 'Sarabun', sans-serif; 
             background-color: var(--app-bg); 
             -webkit-tap-highlight-color: transparent;
             height: 100dvh; 
-            height: 100dvh; /* fallback */
             height: -webkit-fill-available;
             overflow: hidden; 
         }
@@ -25,7 +23,6 @@
         .spinner { border: 3px solid rgba(0,0,0,0.1); border-left-color: currentColor; border-radius: 50%; width: 18px; height: 18px; animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Custom Scrollbar เล็กๆ สำหรับกล่องรายวัน */
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -51,8 +48,8 @@
             <div class="text-right flex flex-col items-end">
                 <span id="lastUpdated" class="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-200/60 px-3 py-1 rounded-full mb-1">รอการซิงค์</span>
                 <button onclick="toggleModal('rawModal')" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg flex items-center gap-1 active:scale-95 transition-transform">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    ข้อมูลดิบ
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    ดู/แก้ไขข้อมูล
                 </button>
             </div>
         </header>
@@ -60,7 +57,7 @@
         <!-- Main Content Area -->
         <main class="flex-1 flex flex-col px-5 pb-5 gap-4 min-h-0">
             
-            <!-- Hero Card (Grand Total) -->
+            <!-- Hero Card -->
             <div class="flex-none bg-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden shrink-0 transition-all duration-300" id="heroCard">
                 <div class="absolute top-0 right-0 w-48 h-48 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-40 translate-x-1/3 -translate-y-1/3"></div>
                 <div class="absolute bottom-0 left-0 w-32 h-32 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-40 -translate-x-1/3 translate-y-1/3"></div>
@@ -83,26 +80,24 @@
                 </div>
             </div>
 
-            <!-- Bento Box Actions (Compact) -->
+            <!-- Buttons -->
             <div class="flex-none grid grid-cols-2 gap-3 shrink-0">
                 <button onclick="fetchFromCloud()" id="btnSync" class="bg-blue-600 hover:bg-blue-700 active:scale-[0.97] transition-all duration-300 text-white py-3.5 px-3 rounded-2xl shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2.5">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    <span class="font-heading font-semibold text-sm">ดึงข้อมูล</span>
+                    <span class="font-heading font-semibold text-sm">ดึงข้อมูลจาก Cloud</span>
                 </button>
 
                 <div class="relative active:scale-[0.97] transition-all duration-300">
                     <input type="file" id="fileInput" accept=".txt" class="hidden" onchange="handleFileUpload(event)">
                     <label for="fileInput" class="bg-white hover:bg-slate-50 text-slate-800 py-3.5 px-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-center gap-2.5 cursor-pointer h-full">
                         <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
-                        <span class="font-heading font-semibold text-sm">อัปโหลดไฟล์</span>
+                        <span class="font-heading font-semibold text-sm">อัปโหลดไฟล์เอง</span>
                     </label>
                 </div>
             </div>
 
-            <!-- Month Selector & Daily Summary List (Scrollable Area) -->
+            <!-- Month Selector & Daily List -->
             <section class="flex-1 flex flex-col min-h-0 bg-white rounded-3xl border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] overflow-hidden">
-                
-                <!-- Period Navigation -->
                 <div class="flex justify-between items-center p-2 border-b border-slate-50 bg-white z-10">
                     <button onclick="changePeriod(-1)" class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors active:scale-90">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
@@ -113,17 +108,13 @@
                     </button>
                 </div>
 
-                <!-- Scrollable List of Days -->
-                <!-- ตรงนี้คือจุดเดียวในแอปที่เลื่อนขึ้นลงได้ -->
                 <div id="dailySummaryContainer" class="flex-1 overflow-y-auto custom-scroll p-3 flex flex-col gap-2 relative bg-slate-50/50">
-                    <!-- รายการจะโผล่ตรงนี้ -->
                     <div class="flex flex-col items-center justify-center h-full text-slate-400 opacity-50">
                         <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                         <p class="text-xs font-medium">รอการวิเคราะห์ข้อมูล...</p>
                     </div>
                 </div>
             </section>
-
         </main>
     </div>
 
@@ -156,20 +147,30 @@
         </div>
     </div>
 
-    <!-- Modal: Raw Data View -->
+    <!-- Modal: Raw Data View (EDITABLE) -->
     <div id="rawModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden modal-content-enter">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg h-[85vh] flex flex-col overflow-hidden modal-content-enter">
             <div class="flex justify-between items-center p-4 border-b border-slate-100 bg-white shrink-0">
                 <h3 class="font-heading font-bold text-slate-800 text-base flex items-center gap-2">
-                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    ข้อมูลดิบ
+                    <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    แก้ไขข้อมูลไฟล์
                 </h3>
                 <button onclick="toggleModal('rawModal')" class="bg-slate-100 hover:bg-slate-200 text-slate-500 p-2 rounded-full transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="p-4 overflow-y-auto custom-scroll bg-slate-50 flex-1">
-                <div id="textContent" class="font-mono text-xs text-slate-600 whitespace-pre-wrap">รอการดึงข้อมูล...</div>
+            
+            <div class="p-4 overflow-y-auto custom-scroll bg-slate-50 flex-1 relative">
+                <!-- เปลี่ยน div เป็น textarea ให้พิมพ์แก้ไขได้ -->
+                <textarea id="textContent" class="w-full h-full bg-transparent font-mono text-sm text-slate-700 resize-none outline-none leading-relaxed" spellcheck="false" placeholder="พิมพ์ข้อมูลรายจ่ายที่นี่..."></textarea>
+            </div>
+
+            <div class="p-4 border-t border-slate-100 bg-white shrink-0 flex gap-2">
+                <button onclick="toggleModal('rawModal')" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl transition-colors">ยกเลิก</button>
+                <button onclick="saveToCloud()" class="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    บันทึกขึ้นระบบ
+                </button>
             </div>
         </div>
     </div>
@@ -183,13 +184,13 @@
     </div>
 
     <script>
+        // ใส่ URL ของ Web App ตรงนี้เหมือนเดิมครับ
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby5wog2rJaNIqPplRKoIzvm-EWolvtSGkEZ8Owrav1sxlkqKdshENQUdPLoSGoH9M_Y/exec";
 
-        // State Management
         let appData = {
             allTime: { total: 0, count: 0 },
-            periods: [], // e.g., ["2569-05", "2569-04", "all"]
-            groupedData: {} // e.g., { "2569-05": { label: "พฤษภาคม 2569", total: 0, count: 0, days: { "1-5-69": { total: 0, items: [] } } } }
+            periods: [], 
+            groupedData: {} 
         };
         let currentPeriodIndex = 0;
         
@@ -236,14 +237,40 @@
                 showToast('อ่านไฟล์สำเร็จ', 'success');
             };
             reader.readAsText(file, 'UTF-8');
-            event.target.value = '';
+        event.target.value = '';
+    }
+
+    // ฟังก์ชันใหม่: ส่งข้อมูลที่แก้ไขกลับไปเซฟบน Google แบบเนียนๆ
+    async function saveToCloud() {
+        const newText = document.getElementById('textContent').value;
+        
+        // 1. นำข้อมูลที่แก้ไปคำนวณบนหน้าเว็บใหม่ทันที
+        processData(newText, `แก้ไขล่าสุดเมื่อ ${new Date().toLocaleTimeString("th-TH")} (รอซิงค์ลงคอม)`);
+        
+        try {
+            // 2. โยนข้อมูลกลับไปเก็บที่ Google Apps Script 
+            const formData = new URLSearchParams();
+            formData.append('textData', newText);
+
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', // หลบหลีกการบล็อก CORS ของเบราว์เซอร์
+                body: formData
+            });
+            
+            showToast('บันทึกขึ้นระบบแล้ว! กด F11 ที่คอมเพื่อดึงลงไฟล์', 'success');
+        } catch (error) {
+            console.error(error);
+            showToast('เกิดข้อผิดพลาดในการบันทึก', 'error');
         }
 
-        function processData(text, updateTime) {
-            document.getElementById('textContent').textContent = text;
+        toggleModal('rawModal');
+    }
+
+    function processData(text, updateTime) {
+        document.getElementById('textContent').value = text;
             document.getElementById('lastUpdated').textContent = updateTime;
 
-            // Reset Data
             appData = { allTime: { total: 0, count: 0 }, periods: [], groupedData: {} };
             
             const lines = text.split(/\r\n|\n|\r/);
@@ -252,7 +279,6 @@
             let currentRawDate = "รายการอื่นๆ";
             let currentPeriodKey = "uncategorized";
 
-            // Initialize Uncategorized
             appData.groupedData[currentPeriodKey] = { label: "รายการทั่วไป (ไม่ระบุวันที่)", total: 0, count: 0, days: {} };
 
             lines.forEach(line => {
@@ -265,7 +291,7 @@
                     let d = dateMatch[1];
                     let m = parseInt(dateMatch[2], 10);
                     let y = parseInt(dateMatch[3], 10);
-                    if (y < 100) y += 2500; // แปลง 69 เป็น 2569
+                    if (y < 100) y += 2500;
                     
                     currentPeriodKey = `${y}-${m.toString().padStart(2, '0')}`;
                     
@@ -300,20 +326,17 @@
                 }
             });
 
-            // ลบ Uncategorized ออกถ้าไม่มีข้อมูล
             if (appData.groupedData["uncategorized"].count === 0) {
                 delete appData.groupedData["uncategorized"];
             }
 
-            // สร้างอาร์เรย์ของรอบเวลา (เรียงจากใหม่ไปเก่า)
             appData.periods = Object.keys(appData.groupedData).sort().reverse();
             
-            // เพิ่มตัวเลือก "รวมทุกเวลา" ไว้ท้ายสุด
             if (appData.periods.length > 1) {
                 appData.periods.push("all");
             }
 
-            currentPeriodIndex = 0; // เริ่มที่เดือนล่าสุด
+            currentPeriodIndex = 0; 
             renderDashboard();
         }
 
@@ -331,7 +354,6 @@
             const pKey = appData.periods[currentPeriodIndex];
             const isAllTime = pKey === "all";
             
-            // 1. อัปเดต Hero Card (ยอดรวมด้านบนสุด)
             const displayTotal = isAllTime ? appData.allTime.total : appData.groupedData[pKey].total;
             const displayCount = isAllTime ? appData.allTime.count : appData.groupedData[pKey].count;
             const displayLabel = isAllTime ? "รวมทุกเวลา" : `รวม ${appData.groupedData[pKey].label}`;
@@ -340,28 +362,23 @@
             document.getElementById('totalExpense').textContent = displayTotal.toLocaleString('th-TH');
             document.getElementById('totalItems').textContent = `${displayCount.toLocaleString('th-TH')} รายการ`;
 
-            // 2. อัปเดตป้ายกำกับ Period
             document.getElementById('currentPeriodLabel').textContent = isAllTime ? "ภาพรวมทั้งหมด" : appData.groupedData[pKey].label;
 
-            // 3. วาด List รายวัน
             const container = document.getElementById('dailySummaryContainer');
             container.innerHTML = '';
             
-            // ถ้ารวมทุกเวลา ให้ดึงทุกวันมาโชว์ หรือโชว์เป็นรายเดือนแทน
             let daysToRender = [];
             if (isAllTime) {
-                // โหมด All Time -> โชว์การ์ดรายเดือนแทน
                 for (let k of appData.periods.filter(k => k !== "all")) {
                     daysToRender.push({
                         title: appData.groupedData[k].label,
                         subtitle: "สรุปรายเดือน",
                         total: appData.groupedData[k].total,
                         count: appData.groupedData[k].count,
-                        onClickArgs: null // ไม่เปิดบิลรายวันถ้าเป็นเดือน
+                        onClickArgs: null 
                     });
                 }
             } else {
-                // โหมดปกติ -> โชว์รายวันในเดือนนั้น
                 const daysObj = appData.groupedData[pKey].days;
                 for (const [date, data] of Object.entries(daysObj)) {
                     if (data.total > 0) {
@@ -376,7 +393,6 @@
                 }
             }
 
-            // วาด HTML List (แบบแถวตั้งกะทัดรัด)
             daysToRender.forEach((d, i) => {
                 const clickAttr = d.onClickArgs ? `onclick="${d.onClickArgs}" class="cursor-pointer hover:border-blue-200 active:scale-[0.98] transition-all bg-white border border-slate-100 rounded-2xl p-3 sm:p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)] group"` : `class="bg-white border border-slate-100 rounded-2xl p-3 sm:p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.02)]"`;
                 
