@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root { --app-bg: #f4f5f9; }
-        /* ปรับพื้นหลังให้ดูเป็นแอปที่ลอยอยู่ตรงกลางบนจอ iPad */
         body { 
             font-family: 'Sarabun', sans-serif; 
             background-color: #e2e8f0; 
@@ -22,7 +21,6 @@
         
         h1, h2, h3, .font-heading { font-family: 'Prompt', sans-serif; }
         
-        .spinner { border: 3px solid rgba(255,255,255,0.2); border-left-color: #ffffff; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s cubic-bezier(0.5, 0, 0.5, 1) infinite; display: inline-block; }
         .spinner-small { border: 2px solid rgba(59, 130, 246, 0.2); border-left-color: #3b82f6; border-radius: 50%; width: 14px; height: 14px; animation: spin 0.8s linear infinite; display: inline-block; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
@@ -40,7 +38,6 @@
 </head>
 <body class="text-slate-800 selection:bg-blue-200">
 
-    <!-- App Container: ปรับแต่งให้ iPad เป็นกล่องตรงกลางจอ มือถือเป็นเต็มจอ -->
     <div class="w-full h-full md:h-[95dvh] md:max-w-3xl md:rounded-[2.5rem] md:border border-white/50 flex flex-col relative bg-[#f4f5f9] md:shadow-2xl overflow-hidden">
         
         <!-- Header -->
@@ -49,6 +46,7 @@
                 <p class="text-xs md:text-sm font-medium text-slate-500 mb-0.5">ยินดีต้อนรับ 👋</p>
                 <div class="flex items-center gap-2">
                     <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">ภาพรวมรายจ่าย</h1>
+                    <!-- ไอคอนโหลดเบื้องหลัง -->
                     <div id="bgSyncIndicator" class="hidden flex items-center justify-center bg-blue-50 px-2.5 py-1 md:py-1.5 rounded-full gap-1.5 transition-opacity">
                         <div class="spinner-small"></div>
                         <span class="text-[10px] md:text-xs font-bold text-blue-600 tracking-wide">กำลังซิงค์...</span>
@@ -90,16 +88,6 @@
                 </div>
             </div>
 
-            <!-- Single Sync Button (แทนปุ่มอัปโหลด) -->
-            <div class="flex-none shrink-0">
-                <button onclick="fetchFromCloud(false)" id="btnSync" class="w-full bg-white border border-slate-200 hover:border-blue-300 hover:bg-blue-50 active:scale-[0.98] transition-all duration-300 text-blue-600 py-3.5 rounded-2xl shadow-sm flex items-center justify-center gap-2.5 group">
-                    <div class="bg-blue-100 p-1.5 rounded-lg text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    </div>
-                    <span class="font-heading font-bold text-sm md:text-base">ดึงข้อมูลล่าสุดจากระบบ</span>
-                </button>
-            </div>
-
             <!-- Month Selector & Daily List -->
             <section class="flex-1 flex flex-col min-h-0 bg-white rounded-3xl border border-slate-100 shadow-[0_2px_15px_rgb(0,0,0,0.02)] overflow-hidden">
                 <div class="flex justify-between items-center p-3 border-b border-slate-50 bg-white z-10">
@@ -112,7 +100,6 @@
                     </button>
                 </div>
 
-                <!-- Grid Layout (1 คอลัมน์บนมือถือ, 2 คอลัมน์บน iPad) -->
                 <div id="dailySummaryContainer" class="flex-1 overflow-y-auto custom-scroll p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 content-start bg-slate-50/50 relative">
                     <div class="col-span-full flex flex-col items-center justify-center h-full min-h-[150px] text-slate-400 opacity-50">
                         <svg class="w-10 h-10 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
@@ -202,7 +189,7 @@
                 const data = JSON.parse(cachedData);
                 processData(data.content, "รอการซิงค์ข้อมูลล่าสุด..."); 
             }
-            fetchFromCloud(true);
+            fetchFromCloud(); // สั่งดึงข้อมูลทันทีแบบเบื้องหลัง
         };
 
         function toggleModal(modalId) {
@@ -216,18 +203,12 @@
             }
         }
 
-        async function fetchFromCloud(isBackground = false) {
-            const btn = document.getElementById('btnSync');
-            const originalHTML = btn.innerHTML;
+        // ปรับระบบดึงข้อมูลให้เป็น Background Sync ทั้งหมด
+        async function fetchFromCloud() {
             const bgSyncIcon = document.getElementById('bgSyncIndicator');
 
             try {
-                if (isBackground) {
-                    bgSyncIcon.classList.remove('hidden'); 
-                } else {
-                    btn.innerHTML = `<div class="spinner text-blue-600 border-slate-200"></div><span class="font-heading font-semibold text-sm md:text-base text-blue-600">กำลังดึง...</span>`;
-                    btn.style.pointerEvents = 'none';
-                }
+                bgSyncIcon.classList.remove('hidden'); 
 
                 const response = await fetch(SCRIPT_URL, { redirect: 'follow' });
                 if (!response.ok) throw new Error('Network error');
@@ -236,17 +217,11 @@
                 localStorage.setItem(CACHE_KEY, JSON.stringify(data));
                 processData(data.content, data.updateTime);
                 
-                if (!isBackground) showToast('ซิงค์ข้อมูลล่าสุดเรียบร้อย', 'success');
             } catch (e) {
-                if (!isBackground) showToast('ไม่สามารถดึงข้อมูลได้', 'error');
+                showToast('ไม่สามารถเชื่อมต่อเพื่อดึงข้อมูลใหม่ได้', 'error');
                 console.error(e);
             } finally {
-                if (isBackground) {
-                    bgSyncIcon.classList.add('hidden'); 
-                } else {
-                    btn.innerHTML = originalHTML;
-                    btn.style.pointerEvents = 'auto';
-                }
+                bgSyncIcon.classList.add('hidden'); 
             }
         }
 
