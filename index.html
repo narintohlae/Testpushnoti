@@ -5324,6 +5324,59 @@ document.addEventListener("DOMContentLoaded", function() {
     }, 1500); // หน่วงเวลา 1.5 วินาทีเผื่อ UI โหลด
 });
 </script>
+    <!-- Patch: บังคับเคอร์เซอร์กลับมาที่ช่องค้นหาทุกกรณีหลังสแกนบาร์โค้ด -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // หน่วงเวลา 2 วินาทีเพื่อให้มั่นใจว่าระบบหลัก (POS_APP) เรนเดอร์และสร้าง Event เสร็จสิ้นทั้งหมดแล้ว
+    setTimeout(function() {
+        const app = window.POS_APP;
+        if (!app) return;
+
+        console.log("Applying Barcode Scanner Focus Fix...");
+
+        // 1. ดักจับเมื่อมีการเพิ่มสินค้าลงตะกร้า (addToCart)
+        const originalAddToCart = app.addToCart;
+        app.addToCart = function(productUnit, qty) {
+            // เรียกทำงานฟังก์ชันเดิมตามปกติ
+            originalAddToCart.apply(this, [productUnit, qty]);
+
+            // สร้างสถานะชั่วคราวว่า "เพิ่งสแกนสินค้า" (ล็อคไว้ 300 มิลลิวินาที)
+            app.state.justScannedItem = true;
+            setTimeout(() => { app.state.justScannedItem = false; }, 300);
+
+            // ฟังก์ชันดึงโฟกัสกลับมาที่ช่องค้นหา
+            const forceFocus = () => {
+                const searchInput = document.getElementById('barcode-input');
+                // เช็คว่าไม่มีหน้าต่าง Popup (Modal) เปิดบังอยู่ ถึงจะดึงโฟกัสกลับมา
+                if (searchInput && !document.querySelector('.modal-overlay[style*="display: flex"]')) {
+                    searchInput.focus({preventScroll: true});
+                    // ไม่ใช้ select() เพื่อป้องกันการคลุมดำแล้วพิมพ์ทับบาร์โค้ดถัดไป (ในกรณีเครื่องยิงเร็วเกินไป)
+                }
+            };
+
+            // ใช้ setTimeout ดึงโฟกัสกลับมา 2 จังหวะ เพื่อเอาชนะคำสั่งที่เครื่องสแกนส่งมาหน่วงๆ
+            setTimeout(forceFocus, 50);
+            setTimeout(forceFocus, 150); 
+        };
+
+        // 2. ดักจับปุ่มที่กดบนช่องค้นหา ก่อนที่ระบบเก่าจะทำงาน
+        const searchInput = document.getElementById('barcode-input');
+        if (searchInput) {
+            searchInput.addEventListener('keydown', function(e) {
+                // ถ้าเพิ่งสแกนสินค้าเสร็จใหม่ๆ (ภายใน 0.3 วินาที)
+                // ให้ทำการบล็อกปุ่ม Tab, ลูกศรขึ้น, ลูกศรลง ที่เครื่องสแกนอาจจะแถมมาทันที!
+                if (app.state.justScannedItem) {
+                    if (['ArrowDown', 'ArrowUp', 'Tab'].includes(e.key)) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation(); // หยุดการทำงานของโค้ดเก่าทันที
+                    }
+                }
+            }, true); // ใช้ true (Capture Phase) เพื่อให้โค้ดนี้ทำงานก่อน Event Listener ตัวอื่นๆ ในระบบ
+        }
+
+    }, 2000); 
+});
+</script>
 </body></html>
 
 <script>
