@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ระบบพนักงาน - บนมือถือ</title>
+    
+    <!-- PWA Meta Tags & Manifest -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ระบบพนักงาน">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    <link rel="manifest" href="manifest.json">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.2s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-enter { animation: modalFadeIn 0.3s ease-out forwards; }
+        @keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        /* Style for bottom nav active state */
+        .nav-btn { color: #9ca3af; transition: color 0.2s; }
+        .nav-btn.active { color: #2563eb; }
+        .nav-btn.active svg { stroke-width: 2.5; }
+    </style>
+</head>
+<body class="h-screen w-full flex justify-center bg-gray-100 overflow-hidden">
+
+    <!-- Message Box -->
+    <div id="message-box" class="hidden fixed top-4 right-4 left-4 max-w-md mx-auto shadow-2xl border-l-4 p-4 rounded-2xl z-[60] transition-all duration-300">
+        <p id="message-text" class="text-gray-800 font-medium"></p>
+    </div>
+
+    <!-- Conflict Warning Modal -->
+    <div id="conflict-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl shadow-2xl p-6 md:p-8 w-full max-w-sm modal-enter text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-rose-100 mb-5">
+                <svg class="h-8 w-8 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">ไม่สามารถส่งคำร้องได้</h3>
+            <p id="conflict-msg" class="text-gray-600 mb-6 text-sm leading-relaxed"></p>
+            <button onclick="closeConflictModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl transition active:scale-95">
+                ตกลง, ฉันเข้าใจแล้ว
+            </button>
+        </div>
+    </div>
+
+    <!-- 1. หน้า Login -->
+    <div id="login-view" class="w-full h-full flex flex-col justify-center items-center p-6 bg-white z-30 fade-in absolute inset-0">
+        <div class="w-full max-w-sm text-center mb-8">
+            <div class="inline-block bg-blue-50 p-5 rounded-full mb-5 shadow-inner">
+                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800">เข้าสู่ระบบ</h1>
+            <p id="auth-status" class="text-sm text-gray-500 mt-2">กำลังตรวจสอบข้อมูล...</p>
+        </div>
+
+        <div class="w-full max-w-sm space-y-6" id="login-form">
+            <div class="bg-gray-50 p-5 rounded-3xl border border-gray-100">
+                <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">1. เลือกชื่อของคุณ</label>
+                <select id="login-name" class="w-full border border-gray-200 p-4 rounded-2xl bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-800 font-bold appearance-none shadow-sm">
+                    <option value="">-- โหลดรายชื่อ... --</option>
+                </select>
+            </div>
+            <div class="bg-blue-50 p-5 rounded-3xl border border-blue-100">
+                <label class="block text-[11px] font-bold text-blue-600 mb-1.5 ml-1">2. รหัส PIN 4 หลัก</label>
+                <input type="password" id="login-pin" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="****" class="w-full border border-blue-200 p-4 rounded-2xl bg-white focus:ring-2 focus:ring-blue-500 outline-none text-center text-3xl tracking-[0.8em] font-bold text-gray-700 shadow-sm" oninput="if(this.value.length===4) login();">
+            </div>
+            <button onclick="login()" id="btn-login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-2xl shadow-lg transition active:scale-95 text-lg mt-2">
+                ยืนยันเข้าสู่ระบบ
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. หน้า Dashboard (ส่วนตัว) -->
+    <div id="main-view" class="hidden w-full max-w-md h-full bg-gray-50 flex flex-col relative overflow-hidden shadow-2xl sm:rounded-3xl sm:h-[90vh] sm:my-auto">
+        
+        <!-- Header -->
+        <div class="bg-blue-600 pt-10 pb-6 px-6 text-white rounded-b-[40px] shadow-md z-10 flex justify-between items-start">
+            <div>
+                <p class="text-blue-200 text-xs font-medium mb-1">ยินดีต้อนรับกลับมา,</p>
+                <h2 id="user-display-name" class="text-2xl font-bold leading-tight">ชื่อพนักงาน</h2>
+            </div>
+            <button onclick="confirmLogout()" class="bg-white/20 hover:bg-white/30 p-2.5 rounded-2xl backdrop-blur-sm transition active:scale-95">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div class="flex-1 overflow-y-auto pb-24 px-5 pt-6 hide-scrollbar">
+            
+            <!-- Tab 1: ลงเวลา -->
+            <div id="time-tab" class="block fade-in h-full flex flex-col">
+                <div class="text-center mb-6">
+                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">เวลาปัจจุบัน</p>
+                    <h1 id="live-clock" class="text-[3.5rem] font-bold text-gray-800 leading-none tracking-tight">00:00</h1>
+                    <p id="live-date" class="text-blue-600 mt-2 text-sm font-bold"></p>
+                </div>
+
+                <!-- แผงสถานะประจำวัน -->
+                <div id="today-status-panel" class="mb-8 p-5 rounded-3xl text-center border border-gray-100 bg-white shadow-sm transition-all duration-300">
+                    <p class="text-gray-400 text-sm font-medium">กำลังตรวจสอบสถานะ...</p>
+                </div>
+                
+                <div class="flex flex-col space-y-4 mt-auto relative mb-4">
+                    <!-- Loading Overlay -->
+                    <div id="btn-overlay" class="hidden absolute inset-0 z-10 bg-gray-50/80 backdrop-blur-sm rounded-3xl flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-10 w-10 border-b-4 border-blue-600"></div>
+                    </div>
+
+                    <button onclick="recordTime('เข้างาน')" id="btn-in" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-7 rounded-3xl shadow-[0_8px_30px_rgb(16,185,129,0.3)] transition active:scale-95 text-2xl tracking-wide flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+                        เข้างาน
+                    </button>
+                    <button onclick="recordTime('ออกงาน')" id="btn-out" class="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-7 rounded-3xl shadow-[0_8px_30px_rgb(244,63,94,0.3)] transition active:scale-95 text-2xl tracking-wide flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        ออกงาน
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 2: คำร้องต่างๆ -->
+            <div id="request-tab" class="hidden fade-in">
+                
+                <!-- สรุปสิทธิ์วันลา -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-500 p-5 rounded-3xl mb-5 shadow-lg flex items-center justify-between text-white">
+                    <div>
+                        <p class="text-blue-100 font-medium text-xs">โควต้าลางานประจำปี</p>
+                        <p class="mt-1 text-sm">ใช้ไปแล้ว: <span id="quota-used" class="font-black text-2xl">0</span> / 10</p>
+                    </div>
+                    <div id="quota-badge" class="bg-white/20 backdrop-blur-sm font-bold text-sm px-4 py-2 rounded-xl">
+                        เหลือ 10 วัน
+                    </div>
+                </div>
+
+                <!-- แจ้งเตือนวันหยุดร้าน -->
+                <div id="store-holidays-panel" class="bg-amber-50 border border-amber-200 text-amber-800 text-sm p-4 rounded-3xl mb-5 hidden shadow-sm">
+                    <p class="font-bold mb-2 flex items-center">
+                        <svg class="w-5 h-5 mr-1.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        วันหยุดประจำปีของร้าน
+                    </p>
+                    <ul id="store-holidays-list" class="list-disc list-inside text-amber-700/80 font-medium space-y-1"></ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6">
+                    <div class="mb-5">
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">ประเภทคำร้อง</label>
+                        <select id="reqType" onchange="toggleSwapDate()" class="w-full border border-gray-200 p-4 rounded-2xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800 appearance-none">
+                            <option value="ลางาน">ลางาน (ใช้โควต้า)</option>
+                            <option value="สลับวันหยุด">สลับวันหยุด (ไม่ใช้โควต้า)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-6">
+                        <label id="reqDateLabel" class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">วันที่ต้องการหยุด</label>
+                        <input type="date" id="reqDate" class="w-full border border-gray-200 p-4 rounded-2xl bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-700">
+                    </div>
+
+                    <div id="swapDateField" class="mb-6 hidden fade-in bg-blue-50 p-5 rounded-3xl border border-blue-100">
+                        <label class="block text-[11px] font-bold text-blue-600 mb-1.5 ml-1">วันที่จะมาทำงานแทน (วันชดเชย)</label>
+                        <input type="date" id="reqSwapDate" class="w-full border border-blue-200 p-4 rounded-2xl bg-white focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-700">
+                    </div>
+
+                    <button onclick="submitRequest()" id="btn-submit-req" class="w-full bg-gray-900 hover:bg-black text-white font-bold py-4 px-4 rounded-2xl shadow-lg transition active:scale-95 text-lg">
+                        ยืนยันการส่งคำร้อง
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 3: ประวัติของฉัน -->
+            <div id="history-tab" class="hidden fade-in flex flex-col h-full">
+                <!-- Sub Tabs -->
+                <div class="flex bg-gray-200/50 p-1.5 rounded-2xl mb-6 shadow-inner">
+                    <button onclick="switchHistorySubTab('hist-time')" id="btn-hist-time" class="flex-1 py-2.5 text-sm font-bold rounded-xl bg-white shadow-sm text-blue-600 transition">การลงเวลา</button>
+                    <button onclick="switchHistorySubTab('hist-req')" id="btn-hist-req" class="flex-1 py-2.5 text-sm font-bold rounded-xl text-gray-500 hover:text-gray-700 transition">คำร้องที่ส่ง</button>
+                </div>
+                
+                <div id="hist-time" class="flex-1 space-y-3 pb-4 block">
+                    <div id="my-time-list"></div>
+                </div>
+
+                <div id="hist-req" class="flex-1 space-y-3 pb-4 hidden">
+                    <div id="my-req-list"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 🌟 Bottom Navigation Bar -->
+        <nav class="absolute bottom-0 w-full bg-white border-t border-gray-100 flex justify-around items-center pb-safe pt-2 pb-4 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-20 sm:rounded-b-3xl">
+            <button onclick="switchTab('time-tab')" id="nav-time-tab" class="nav-btn active flex flex-col items-center w-1/3 py-1">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="text-[10px] font-bold">ลงเวลา</span>
+            </button>
+            <button onclick="switchTab('request-tab')" id="nav-request-tab" class="nav-btn flex flex-col items-center w-1/3 py-1">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <span class="text-[10px] font-bold">ส่งคำร้อง</span>
+            </button>
+            <button onclick="switchTab('history-tab')" id="nav-history-tab" class="nav-btn flex flex-col items-center w-1/3 py-1">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                <span class="text-[10px] font-bold">ประวัติ</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHuZGyY1F3v4rCrhrpt9YB90C0Ahh-stE",
+            authDomain: "my-company-time-tracking.firebaseapp.com",
+            projectId: "my-company-time-tracking",
+            storageBucket: "my-company-time-tracking.firebasestorage.app",
+            messagingSenderId: "758524847747",
+            appId: "1:758524847747:web:2e5a49e4064334f1265db6",
+            measurementId: "G-50SYJKTRT1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const isCanvas = typeof __app_id !== 'undefined';
+        const canvasAppId = isCanvas ? __app_id : 'default-id';
+        const getPath = (colName) => isCanvas ? `artifacts/${canvasAppId}/public/data/${colName}` : colName;
+
+        let currentUser = null;
+        let isReady = false;
+        
+        let employeesData = [];
+        let allRequests = []; 
+        let allTimeRecords = [];
+        let storeHolidays = [];
+        
+        let loggedInEmp = null; 
+        const MAX_LEAVE_DAYS = 10;
+        let usedLeaveDays = 0;
+
+        // Live Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('live-clock').textContent = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+            document.getElementById('live-date').textContent = now.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+        }, 1000);
+
+        // UI Utils
+        window.showMessage = function(msg, isError = false) {
+            const box = document.getElementById('message-box');
+            const text = document.getElementById('message-text');
+            text.textContent = msg;
+            box.className = `fixed top-10 right-4 left-4 max-w-md mx-auto shadow-2xl border-l-4 p-4 rounded-2xl z-[60] transition-all duration-300 ${isError ? 'bg-rose-50 border-rose-500 text-rose-800' : 'bg-emerald-50 border-emerald-500 text-emerald-800'}`;
+            box.classList.remove('hidden');
+            setTimeout(() => { box.classList.add('hidden'); }, 3000);
+        };
+
+        window.switchTab = function(tabId) {
+            ['time-tab', 'request-tab', 'history-tab'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+                document.getElementById(`nav-${id}`).classList.remove('active');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById(`nav-${tabId}`).classList.add('active');
+            
+            if(tabId === 'history-tab') renderMyHistory();
+            
+            if(tabId === 'request-tab') {
+                const tmr = new Date();
+                tmr.setDate(tmr.getDate() + 1);
+                const tmrStr = tmr.toISOString().split('T')[0];
+                document.getElementById('reqDate').value = tmrStr;
+                
+                const todayStr = new Date().toISOString().split('T')[0];
+                document.getElementById('reqDate').setAttribute('min', todayStr);
+                document.getElementById('reqSwapDate').setAttribute('min', todayStr);
+                
+                updateLeaveQuotaUI();
+            }
+        };
+
+        window.switchHistorySubTab = function(tabId) {
+            document.getElementById('hist-time').classList.add('hidden');
+            document.getElementById('hist-req').classList.add('hidden');
+            document.getElementById('btn-hist-time').className = "flex-1 py-2.5 text-sm font-bold rounded-xl text-gray-500 hover:text-gray-700 transition";
+            document.getElementById('btn-hist-req').className = "flex-1 py-2.5 text-sm font-bold rounded-xl text-gray-500 hover:text-gray-700 transition";
+            
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById(`btn-${tabId}`).className = "flex-1 py-2.5 text-sm font-bold rounded-xl bg-white shadow-sm text-blue-600 transition";
+        };
+
+        window.toggleSwapDate = function() {
+            const reqType = document.getElementById('reqType').value;
+            const swapDateField = document.getElementById('swapDateField');
+            const reqDateLabel = document.getElementById('reqDateLabel');
+
+            if (reqType === 'สลับวันหยุด') {
+                swapDateField.classList.remove('hidden');
+                reqDateLabel.textContent = "วันที่ขอหยุด (วันที่อยากหยุด)";
+            } else {
+                swapDateField.classList.add('hidden');
+                reqDateLabel.textContent = "วันที่ต้องการหยุด (วันที่ลา)";
+                document.getElementById('reqSwapDate').value = ''; 
+            }
+        };
+
+        window.closeConflictModal = function() {
+            document.getElementById('conflict-modal').classList.add('hidden');
+        };
+
+        const formatDateFull = (timestamp) => {
+            if (!timestamp) return { date: 'กำลังบันทึก...', time: '' };
+            const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            return {
+                date: d.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' }),
+                time: d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+            };
+        };
+
+        const formatDisplayDate = (dateString) => {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        };
+
+        // Auth Init
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                document.getElementById('auth-status').textContent = "❌ เชื่อมต่อระบบล้มเหลว";
+                document.getElementById('auth-status').classList.add("text-rose-500");
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                isReady = true;
+                document.getElementById('auth-status').innerHTML = '<span class="text-blue-500 font-bold">พร้อมใช้งาน</span>';
+                loadAllData();
+            }
+        });
+
+        initAuth();
+
+        function loadAllData() {
+            if (!currentUser) return;
+            
+            onSnapshot(collection(db, getPath('employees')), (snapshot) => {
+                employeesData = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                employeesData.sort((a, b) => a.name.localeCompare(b.name, 'th'));
+                
+                const select = document.getElementById('login-name');
+                if(!loggedInEmp) {
+                    select.innerHTML = employeesData.length > 0 
+                        ? `<option value="">-- กรุณาเลือกชื่อของคุณ --</option>` + employeesData.map(emp => `<option value="${emp.name}">${emp.name}</option>`).join('')
+                        : `<option value="">-- ไม่มีรายชื่อในระบบ --</option>`;
+                }
+                checkAutoLogin();
+            }, console.error);
+
+            // โหลดวันหยุดร้าน
+            onSnapshot(collection(db, getPath('store_holidays')), (snapshot) => {
+                storeHolidays = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                storeHolidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+                updateStoreHolidaysUI();
+            }, console.error);
+
+            onSnapshot(collection(db, getPath('time_records')), (snapshot) => {
+                allTimeRecords = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                allTimeRecords.sort((a, b) => {
+                    const timeA = a.timestamp?.seconds || Number.MAX_SAFE_INTEGER;
+                    const timeB = b.timestamp?.seconds || Number.MAX_SAFE_INTEGER;
+                    return timeB - timeA;
+                });
+                
+                if(loggedInEmp) {
+                    renderMyHistory(); 
+                    updateTodayStatus(); 
+                }
+            }, console.error);
+
+            onSnapshot(collection(db, getPath('requests')), (snapshot) => {
+                allRequests = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                allRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                if(loggedInEmp) {
+                    renderMyHistory(); 
+                    updateLeaveQuotaUI();
+                }
+            }, console.error);
+        }
+
+        function updateStoreHolidaysUI() {
+            const panel = document.getElementById('store-holidays-panel');
+            const list = document.getElementById('store-holidays-list');
+            
+            if (storeHolidays.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            panel.classList.remove('hidden');
+            list.innerHTML = storeHolidays.map(h => 
+                `<li>${formatDisplayDate(h.date)} : ${h.name}</li>`
+            ).join('');
+        }
+
+        function updateLeaveQuotaUI() {
+            if(!loggedInEmp) return;
+            const currentYear = new Date().getFullYear().toString();
+            
+            // นับโควต้า (รวมประเภทเก่าๆ ที่อาจค้างอยู่ด้วย)
+            const usedLeaves = allRequests.filter(r => 
+                r.name === loggedInEmp.name && 
+                r.status === 'อนุมัติแล้ว' && 
+                r.date.startsWith(currentYear) &&
+                (r.type === 'ลางาน' || r.type === 'ลากิจ' || r.type === 'ลาป่วย' || r.type === 'ลาพักร้อน')
+            );
+            
+            usedLeaveDays = usedLeaves.length;
+            const remaining = MAX_LEAVE_DAYS - usedLeaveDays;
+
+            document.getElementById('quota-used').textContent = usedLeaveDays;
+            const badge = document.getElementById('quota-badge');
+            
+            if (remaining > 0) {
+                badge.textContent = `เหลือ ${remaining} วัน`;
+                badge.className = "bg-white/20 backdrop-blur-sm font-bold text-sm px-4 py-2 rounded-xl text-white";
+            } else {
+                badge.textContent = "สิทธิ์หมดแล้ว";
+                badge.className = "bg-rose-500 font-bold text-sm px-4 py-2 rounded-xl text-white shadow-sm";
+            }
+        }
+
+        function checkAutoLogin() {
+            if (loggedInEmp) return; 
+            const savedName = localStorage.getItem('myCompanyEmpName');
+            const savedPin = localStorage.getItem('myCompanyEmpPin');
+            
+            if (savedName && savedPin) {
+                const emp = employeesData.find(e => e.name === savedName && (e.pin || '1234') === savedPin);
+                if (emp) {
+                    processLoginSuccess(emp, false);
+                } else {
+                    localStorage.removeItem('myCompanyEmpName');
+                    localStorage.removeItem('myCompanyEmpPin');
+                }
+            }
+        }
+
+        window.login = function() {
+            const selectedName = document.getElementById('login-name').value;
+            const pin = document.getElementById('login-pin').value;
+            
+            if(!selectedName) return showMessage("กรุณาเลือกชื่อของคุณก่อน", true);
+            if(!pin || pin.length < 4) return showMessage("กรุณากรอกรหัส PIN ให้ครบ 4 หลัก", true);
+
+            const emp = employeesData.find(e => e.name === selectedName && (e.pin || '1234') === pin);
+            
+            if (emp) {
+                localStorage.setItem('myCompanyEmpName', emp.name);
+                localStorage.setItem('myCompanyEmpPin', emp.pin || '1234');
+                processLoginSuccess(emp, true);
+            } else {
+                showMessage("รหัส PIN ไม่ถูกต้อง!", true);
+                document.getElementById('login-pin').value = '';
+            }
+        };
+
+        function processLoginSuccess(emp, showMsg = true) {
+            loggedInEmp = emp;
+            document.getElementById('user-display-name').textContent = loggedInEmp.name;
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+            
+            switchTab('time-tab');
+            updateTodayStatus(); 
+            updateLeaveQuotaUI();
+            
+            document.getElementById('login-pin').value = '';
+            if(showMsg) showMessage(`ยินดีต้อนรับคุณ ${loggedInEmp.name}`);
+        }
+
+        window.confirmLogout = function() {
+            if(confirm("คุณต้องการเปลี่ยนบัญชีผู้ใช้ใช่หรือไม่?")) {
+                localStorage.removeItem('myCompanyEmpName');
+                localStorage.removeItem('myCompanyEmpPin');
+                loggedInEmp = null;
+                document.getElementById('main-view').classList.add('hidden');
+                document.getElementById('login-view').classList.remove('hidden');
+                document.getElementById('login-name').value = '';
+            }
+        };
+
+        window.updateTodayStatus = function() {
+            if (!loggedInEmp) return;
+
+            const panel = document.getElementById('today-status-panel');
+            const btnIn = document.getElementById('btn-in');
+            const btnOut = document.getElementById('btn-out');
+            
+            const todayStr = new Date().toLocaleDateString('th-TH');
+
+            const myTodayRecords = allTimeRecords.filter(r => {
+                if (r.name !== loggedInEmp.name) return false;
+                if (!r.timestamp) return true; 
+                const recDate = r.timestamp.toDate ? r.timestamp.toDate() : new Date(r.timestamp);
+                return recDate.toLocaleDateString('th-TH') === todayStr;
+            });
+
+            if (myTodayRecords.length === 0) {
+                panel.className = "mb-8 p-5 rounded-3xl text-center border border-gray-100 bg-white shadow-sm transition-all duration-300";
+                panel.innerHTML = `<p class="text-gray-800 font-bold text-lg mb-1">⚪️ วันนี้ยังไม่ได้ลงเวลา</p><p class="text-gray-500 text-sm">พร้อมแล้วกด "เข้างาน" ด้านล่างได้เลยครับ</p>`;
+                
+                btnIn.disabled = false;
+                btnOut.disabled = true;
+                btnIn.classList.remove('hidden');
+                btnOut.classList.remove('hidden');
+            } else {
+                const latest = myTodayRecords[0];
+                let timeStr = "กำลังบันทึก...";
+                if (latest.timestamp) {
+                    const timeObj = latest.timestamp.toDate ? latest.timestamp.toDate() : new Date(latest.timestamp);
+                    timeStr = timeObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + " น.";
+                }
+
+                if (latest.type === 'เข้างาน') {
+                    panel.className = "mb-8 p-5 rounded-3xl text-center border border-emerald-100 bg-emerald-50/80 shadow-sm";
+                    panel.innerHTML = `<p class="text-emerald-700 font-bold text-lg">🟢 เข้างานแล้ว (${timeStr})</p>`;
+                    
+                    btnIn.disabled = true;
+                    btnOut.disabled = false;
+                    btnIn.classList.add('hidden');
+                    btnOut.classList.remove('hidden');
+                } else if (latest.type === 'ออกงาน') {
+                    panel.className = "mb-8 p-5 rounded-3xl text-center border border-rose-100 bg-rose-50/80 shadow-sm";
+                    panel.innerHTML = `<p class="text-rose-700 font-bold text-lg">🔴 ออกงานแล้ว (${timeStr})</p>`;
+                    
+                    btnIn.disabled = false;
+                    btnOut.disabled = true;
+                    btnIn.classList.remove('hidden');
+                    btnOut.classList.add('hidden');
+                }
+            }
+        };
+
+        window.renderMyHistory = function() {
+            if (!loggedInEmp) return;
+
+            const myTimes = allTimeRecords.filter(r => r.name === loggedInEmp.name);
+            const timeList = document.getElementById('my-time-list');
+            
+            if (myTimes.length === 0) {
+                timeList.innerHTML = `<div class="text-center text-gray-500 py-10 bg-white rounded-3xl shadow-sm border border-gray-100">ยังไม่มีประวัติการลงเวลา</div>`;
+            } else {
+                timeList.innerHTML = myTimes.map(record => {
+                    const dt = formatDateFull(record.timestamp);
+                    const isClockIn = record.type === 'เข้างาน';
+                    return `
+                    <div class="bg-white border border-gray-100 rounded-3xl p-5 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center">
+                            <div class="w-2.5 h-12 rounded-full ${isClockIn ? 'bg-emerald-400' : 'bg-rose-400'} mr-4 shrink-0"></div>
+                            <div>
+                                <p class="text-xs text-gray-400 font-bold tracking-wide uppercase mb-0.5">${dt.date}</p>
+                                <p class="text-2xl font-bold text-gray-800 leading-none">${dt.time} <span class="text-sm font-medium text-gray-500">น.</span></p>
+                            </div>
+                        </div>
+                        <span class="text-sm font-bold px-4 py-2 rounded-2xl ${isClockIn ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'} whitespace-nowrap">
+                            ${record.type}
+                        </span>
+                    </div>
+                `}).join('');
+            }
+
+            const myReqs = allRequests.filter(req => req.name === loggedInEmp.name);
+            const reqList = document.getElementById('my-req-list');
+
+            if (myReqs.length === 0) {
+                reqList.innerHTML = `<div class="text-center text-gray-500 py-10 bg-white rounded-3xl shadow-sm border border-gray-100">ยังไม่มีประวัติการส่งคำร้อง</div>`;
+            } else {
+                reqList.innerHTML = myReqs.map(req => {
+                    let statusColor = 'bg-amber-50 text-amber-600 border-amber-100';
+                    if (req.status === 'อนุมัติแล้ว') statusColor = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                    if (req.status === 'ไม่อนุมัติ') statusColor = 'bg-rose-50 text-rose-600 border-rose-100';
+
+                    let dateDisplay = `<span class="font-bold text-gray-400 text-xs uppercase tracking-wider block mb-1">วันที่ต้องการหยุด</span> <span class="font-bold text-gray-800 text-lg">${formatDisplayDate(req.date)}</span>`;
+                    
+                    if (req.type === 'สลับวันหยุด' && req.swapDate) {
+                        dateDisplay += `<div class="mt-2 pt-2 border-t border-gray-50"><span class="font-bold text-blue-400 text-xs uppercase tracking-wider block mb-1">วันที่มาทำแทน</span> <span class="font-bold text-blue-700 text-lg">${formatDisplayDate(req.swapDate)}</span></div>`;
+                    }
+                    const dt = formatDateFull(req.timestamp);
+
+                    return `
+                    <div class="bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
+                        <div class="flex justify-between items-start mb-4 pb-4 border-b border-gray-50">
+                            <div>
+                                <span class="font-bold text-blue-600 text-lg block">${req.type}</span>
+                                <span class="text-xs text-gray-400 font-medium">ส่งเมื่อ: ${dt.date}</span>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1.5 rounded-xl border ${statusColor}">
+                                ${req.status}
+                            </span>
+                        </div>
+                        <div class="text-sm">
+                            ${dateDisplay}
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
+        };
+
+        window.recordTime = async function(type) {
+            if (!isReady || !loggedInEmp) return showMessage("ไม่พบข้อมูลผู้ใช้งาน", true);
+
+            const todayStr = new Date().toLocaleDateString('th-TH');
+            const myTodayRecords = allTimeRecords.filter(r => {
+                if (r.name !== loggedInEmp.name) return false;
+                if (!r.timestamp) return true; 
+                const recDate = r.timestamp.toDate ? r.timestamp.toDate() : new Date(r.timestamp);
+                return recDate.toLocaleDateString('th-TH') === todayStr;
+            });
+
+            const latest = myTodayRecords.length > 0 ? myTodayRecords[0] : null;
+
+            if (type === 'ออกงาน' && (!latest || latest.type !== 'เข้างาน')) {
+                return showMessage("คุณยังไม่ได้กด 'เข้างาน' สำหรับวันนี้ครับ", true);
+            }
+            if (type === 'เข้างาน' && latest && latest.type === 'เข้างาน') {
+                return showMessage("คุณได้เข้างานไปแล้ว ไม่สามารถกดซ้ำได้", true);
+            }
+
+            const overlay = document.getElementById('btn-overlay');
+            overlay.classList.remove('hidden');
+
+            try {
+                await addDoc(collection(db, getPath('time_records')), {
+                    name: loggedInEmp.name, 
+                    type: type, 
+                    timestamp: serverTimestamp(), 
+                    userId: currentUser.uid
+                });
+                
+                showMessage(`บันทึกเวลา${type} สำเร็จ!`);
+                overlay.classList.add('hidden');
+            } catch (error) {
+                showMessage("บันทึกข้อมูลล้มเหลว กรุณาลองใหม่", true);
+                overlay.classList.add('hidden'); 
+            }
+        };
+
+        window.submitRequest = async function() {
+            if (!isReady || !loggedInEmp) return;
+
+            const reqType = document.getElementById('reqType').value;
+            const reqDate = document.getElementById('reqDate').value;
+            const reqSwapDate = document.getElementById('reqSwapDate').value;
+
+            if (!reqDate) return showMessage("กรุณาระบุวันที่ต้องการหยุด", true);
+            if (reqType === 'สลับวันหยุด' && !reqSwapDate) return showMessage("กรุณาระบุ 'วันที่จะมาทำงานแทน'", true);
+            if (reqType === 'สลับวันหยุด' && reqDate === reqSwapDate) return showMessage("วันที่ขอหยุดกับวันที่มาทำงานแทน ต้องไม่ใช่วันเดียวกัน", true);
+
+            if (reqType === 'ลางาน' && usedLeaveDays >= MAX_LEAVE_DAYS) {
+                document.getElementById('conflict-msg').innerHTML = `คุณใช้สิทธิ์ลาประจำปีครบโควต้า <span class="text-rose-600 font-bold">10 วัน</span> แล้ว <br>หากมีเหตุจำเป็นฉุกเฉิน กรุณาติดต่อผู้จัดการโดยตรงครับ`;
+                document.getElementById('conflict-modal').classList.remove('hidden');
+                return;
+            }
+
+            const conflictingRequest = allRequests.find(req => 
+                req.date === reqDate && 
+                req.name !== loggedInEmp.name &&
+                (req.status === 'รออนุมัติ' || req.status === 'อนุมัติแล้ว')
+            );
+
+            if (conflictingRequest) {
+                document.getElementById('conflict-msg').innerHTML = `ในวันที่ <span class="font-bold text-gray-800">${formatDisplayDate(reqDate)}</span> <br>มีเพื่อนพนักงานจองวันหยุดไปแล้ว (สถานะ: <span class="text-rose-600 font-semibold">${conflictingRequest.status}</span>)<br>กรุณาเลือกวันอื่นครับ`;
+                document.getElementById('conflict-modal').classList.remove('hidden');
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit-req');
+            const originalText = btn.innerHTML;
+            btn.disabled = true; 
+            btn.innerHTML = `<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white mx-auto"></div>`;
+
+            const requestData = {
+                name: loggedInEmp.name, 
+                type: reqType, 
+                date: reqDate,
+                status: 'รออนุมัติ', 
+                timestamp: serverTimestamp(), 
+                userId: currentUser.uid
+            };
+
+            if (reqType === 'สลับวันหยุด') {
+                requestData.swapDate = reqSwapDate; 
+            }
+
+            try {
+                await addDoc(collection(db, getPath('requests')), requestData);
+                showMessage(`ส่งคำร้องสำเร็จ!`);
+                
+                document.getElementById('reqSwapDate').value = '';
+                
+                switchTab('history-tab');
+                switchHistorySubTab('hist-req');
+            } catch (error) {
+                showMessage("ส่งคำร้องล้มเหลว", true);
+            } finally {
+                btn.disabled = false; 
+                btn.innerHTML = originalText;
+            }
+        };
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker Registered'))
+                    .catch(err => console.error('Service Worker Registration Failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
