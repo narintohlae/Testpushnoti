@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test iOS Push</title>
+    <!-- ลิงก์ไปยังไฟล์ manifest เพื่อให้ iOS มองว่าเป็น Web App -->
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+        button { padding: 15px 30px; font-size: 18px; background-color: #007AFF; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>ทดสอบแจ้งเตือน iOS</h1>
+    <p>ต้อง Add to Home Screen ก่อนทดสอบใช้งาน</p>
+    <button id="notifyBtn">ขออนุญาต & ตั้งเวลาแจ้งเตือน (10 วิ)</button>
+
+    <script>
+        // ลงทะเบียน Service Worker เพื่อให้ทำงานเบื้องหลังได้
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker Registered'))
+                .catch(err => console.error('Service Worker Error', err));
+        }
+
+        document.getElementById('notifyBtn').addEventListener('click', async () => {
+            // ขออนุญาตส่งการแจ้งเตือน
+            const permission = await Notification.requestPermission();
+            
+            if (permission === 'granted') {
+                alert('อนุญาตสำเร็จ! กรุณากดปุ่ม Home เพื่อปัดแอปนี้ลงเบื้องหลัง ภายใน 10 วินาทีนี้');
+                
+                // สั่งให้ Service Worker ส่งการแจ้งเตือนหลังจากผ่านไป 10 วินาที
+                setTimeout(() => {
+                    navigator.serviceWorker.ready.then(reg => {
+                        reg.showNotification('แจ้งเตือนสำเร็จ!', {
+                            body: 'นี่คือข้อความที่เด้งขึ้นมาแม้คุณจะพับแอปไปแล้ว',
+                            vibrate: [200, 100, 200]
+                        });
+                    });
+                }, 10000); // 10000 มิลลิวินาที = 10 วินาที
+            } else {
+                alert('คุณไม่อนุญาตให้ส่งการแจ้งเตือน');
+            }
+        });
+    </script>
+</body>
+</html>
